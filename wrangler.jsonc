@@ -1,0 +1,6 @@
+{
+  // Static site: Cloudflare serves site/ as-is. No build step.
+  "name": "doggo-vision",
+  "compatibility_date": "2025-11-01",
+  "assets": { "directory": "./site" }
+}

@@ -1,5 +1,5 @@
 // Where the standalone (camera-capable) build is served. Filled in once hosting is set up.
-const HOSTED_URL = '';
+const HOSTED_URL = 'https://doggo-vision.unstoppablesys.workers.dev/';
 // ---------- State ----------
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];

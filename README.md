@@ -2,7 +2,7 @@
 
 A browser simulator of how a specific dog sees: dichromat colour, low acuity with breed-dependent retinal topography, night vision, and 24 eye conditions. It runs as WebGL2 shaders over a photo, a video or the live camera.
 
-**Live site:** served by Cloudflare Pages from `site/` (open it on a phone and tap **Live camera**).
+**Live site:** https://doggo-vision.unstoppablesys.workers.dev/ (open it on a phone and tap **Live camera**).
 
 This is an illustration, not a measured percept and not a diagnosis.
 
@@ -17,4 +17,4 @@ The parameters come from the project's research catalog: the dog colour matrix, 
 - `src/` holds the sources: `head.html` (styles), `body.html` (markup), `shaders.js` (GLSL), `model.js` (profile → parameters, detector mapping), `samples.js` (procedural scenes), `app.js` (renderer and UI).
 - `./build.sh` writes `site/index.html` (the deployed site) and `dist/artifact.html` (the claude.ai preview build).
 
-Edit `src/`, run `./build.sh`, and commit both outputs. Cloudflare Pages deploys `site/` on every push to `main` (no build command, output directory `site`).
+Edit `src/`, run `./build.sh`, and commit both outputs. Cloudflare deploys on every push to `main`; `wrangler.jsonc` serves `site/` as static assets, with no build step.
