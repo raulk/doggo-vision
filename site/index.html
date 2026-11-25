@@ -1374,7 +1374,7 @@ function setImageSource(cnv, meta){
   syncAll(); invalidate();
 }
 function stopVideo(){
-  if(source.video){ source.video.pause(); if(source.video.src) URL.revokeObjectURL(source.video.src); source.video.srcObject = null; source.video = null; }
+  if(source.video){ source.video.pause(); if(source.video.src && source.video.src.startsWith('blob:')) URL.revokeObjectURL(source.video.src); source.video.remove(); source.video.srcObject = null; source.video = null; }
   if(source.stream){ source.stream.getTracks().forEach(t => t.stop()); source.stream = null; }
   source.mirror = false; source.live = false; updateMediaUI();
 }
@@ -1445,16 +1445,50 @@ function loadSample(id){
   $$('#samples button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sample === id)));
   setImageSource(SAMPLES[id]().canvas, SAMPLES[id]());
 }
+// iOS WebKit is picky about local video: it may not load a detached element until play() is called,
+// it can reject a blob whose type is video/quicktime, and some embedded views refuse blob: media.
+// Try each route in turn and only give up when all of them fail.
+let vidHost = null;
+function tryVideoSrc(src, revoke){
+  return new Promise((res, rej) => {
+    if(!vidHost){ vidHost = document.createElement('div'); vidHost.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;overflow:hidden'; document.body.appendChild(vidHost); }
+    const v = document.createElement('video');
+    v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true; v.autoplay = true;
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.preload = 'auto';
+    v.style.cssText = 'width:2px;height:2px';
+    let done = false;
+    const fail = why => { if(done) return; done = true; clearTimeout(t); v.removeAttribute('src'); v.load(); v.remove(); if(revoke) URL.revokeObjectURL(src); rej(new Error(why)); };
+    const ok = () => { if(done || !v.videoWidth) return; done = true; clearTimeout(t); res(v); };
+    v.addEventListener('loadeddata', ok); v.addEventListener('canplay', ok); v.addEventListener('playing', ok);
+    v.addEventListener('error', () => fail('code ' + (v.error ? v.error.code : '?')));
+    const t = setTimeout(() => fail('timeout'), 15000);
+    vidHost.appendChild(v);
+    v.src = src; v.load();
+    const p = v.play(); if(p && p.catch) p.catch(() => {});
+  });
+}
+async function openVideo(file){
+  const routes = [() => [URL.createObjectURL(file), true]];
+  if(file.type !== 'video/mp4') routes.push(() => [URL.createObjectURL(new Blob([file], {type:'video/mp4'})), true]);
+  if(file.size < 80e6) routes.push(async () => [await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('read')); r.readAsDataURL(file.type === 'video/quicktime' ? new Blob([file], {type:'video/mp4'}) : file); }), false]);
+  const errs = [];
+  for(const route of routes){
+    try{ const [src, revoke] = await route(); const v = await tryVideoSrc(src, revoke); try{ await v.play(); }catch(e){} return v; }
+    catch(e){ errs.push(e.message); }
+  }
+  const hint = inArtifact() && HOSTED_URL ? ' Try the standalone version at ' + HOSTED_URL.replace(/^https:\/\//, '') + '.' : '';
+  throw new Error('This video could not be played here (' + errs.join(', ') + ').' + hint);
+}
 async function loadFile(file){
   if(!file) return;
   $$('#samples button').forEach(b => b.setAttribute('aria-pressed', 'false'));
-  if(file.type.startsWith('video/')){
+  const isVid = /^video\//.test(file.type) || (!file.type && /\.(mov|mp4|m4v|webm|3gp)$/i.test(file.name || ''));
+  if(isVid){
     stopVideo();
-    const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.src = URL.createObjectURL(file);
-    await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('This video could not be decoded here. If it was recorded as HEVC, export it as MP4 (H.264) and try again.')); });
-    try{ await v.play(); }catch(e){}
-    useVideo(v, file.name, false);
-    toast('Playing ' + file.name);
+    toast('Opening ' + (file.name || 'video') + '…');
+    let v; try{ v = await openVideo(file); }catch(e){ loadSample('yard'); throw e; }
+    useVideo(v, file.name || 'Video', false);
+    toast('Playing ' + (file.name || 'video'));
     return;
   }
   let bmp;
