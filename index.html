@@ -1,0 +1,1930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0f14">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+<title>Doggo Vision Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen instrument. Viewport (image) on the left, a tabbed control panel on the right; stacks on phones.
+   Palette borrows the dog's two hues: a dichromat blue and a dichromat yellow on a cool ink ground. */
+:root{
+  --ground:#eef0f4; --surface:#ffffff; --sunken:#e4e7ee; --line:#d3d8e2; --fg:#141922; --muted:#5a6475;
+  --dogblue:#3150d6; --dogyellow:#9a7400; --dogyellow-fill:#f2cf4a; --warn:#b3261e; --warn-bg:#fde8e6;
+  --stage:#0f1218;
+  --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#0c0f14; --surface:#141922; --sunken:#0f131a; --line:#252c38; --fg:#e6e9ef; --muted:#8c96a8;
+  --dogblue:#7b93ff; --dogyellow:#f0cd52; --dogyellow-fill:#f0cd52; --warn:#ff8a80; --warn-bg:#3a1714;
+  --stage:#07090c; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --ground:#0c0f14; --surface:#141922; --sunken:#0f131a; --line:#252c38; --fg:#e6e9ef; --muted:#8c96a8;
+  --dogblue:#7b93ff; --dogyellow:#f0cd52; --dogyellow-fill:#f0cd52; --warn:#ff8a80; --warn-bg:#3a1714;
+  --stage:#07090c; color-scheme:dark }
+html,body{height:100%}
+body{background:var(--ground);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--dogblue);outline-offset:2px}
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:12px;gap:12px}
+/* header */
+.top{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(90deg,var(--dogblue) 0 46%, #8f949c 46% 54%, var(--dogyellow-fill) 54% 100%);flex:none}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;margin:0;line-height:1.1}
+.brand p{margin:0;color:var(--muted);font-size:12px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--sunken);border:1px solid var(--line);border-radius:999px;padding:2px}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:999px;cursor:pointer;color:var(--muted);font-size:13px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:999px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--fg);color:var(--ground);border-color:var(--fg)}
+.btn svg{width:15px;height:15px}
+select.sel{border:1px solid var(--line);background:var(--surface);padding:6px 10px;border-radius:999px;font-size:13px}
+/* work area */
+.work{display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:12px;min-height:0}
+.stagecol{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:10px;min-height:0;min-width:0}
+.viewport{position:relative;background:var(--stage);border-radius:var(--r);overflow:hidden;min-height:260px;touch-action:none;user-select:none;-webkit-user-select:none}
+.viewport canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.split{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(0,0,0,.25);pointer-events:none}
+.split .knob{position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.35);display:grid;place-items:center;color:#141922}
+.split .knob svg{width:18px;height:18px}
+.tag{position:absolute;top:12px;font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#f3f4f6;background:rgba(10,12,16,.62);padding:6px 8px;border-radius:6px;pointer-events:none;backdrop-filter:blur(6px)}
+.tag.l{left:12px}.tag.r{right:12px}
+.hud{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 150px);pointer-events:none}
+.chip{font:500 11.5px/1.2 var(--f-mono);color:#eef0f4;background:rgba(10,12,16,.66);padding:6px 8px;border-radius:6px;backdrop-filter:blur(6px);white-space:nowrap}
+.chip b{font-weight:500;color:#f0cd52}
+.zoom{position:absolute;right:12px;bottom:12px;display:flex;gap:4px;background:rgba(10,12,16,.66);border-radius:8px;padding:3px;backdrop-filter:blur(6px)}
+.zoom button{border:0;background:transparent;color:#eef0f4;min-width:30px;height:28px;border-radius:6px;cursor:pointer;font:500 12px var(--f-mono)}
+.zoom button:hover{background:rgba(255,255,255,.12)}
+.drop{position:absolute;inset:10px;border:2px dashed rgba(240,205,82,.85);border-radius:8px;display:grid;place-items:center;color:#f0cd52;font:600 15px var(--f-body);background:rgba(7,9,12,.6)}
+.glfail{position:absolute;inset:0;display:grid;place-items:center;color:#eef0f4;padding:24px;text-align:center}
+.camnote{position:absolute;left:12px;right:12px;top:48px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;z-index:2}
+.camnote a{color:var(--dogblue);font-weight:600;word-break:break-all}
+.camnote .btn{margin-left:auto;padding:3px 10px}
+#camlive[aria-pressed="true"]{border-color:var(--dogblue);color:var(--dogblue)}
+.urgent{position:absolute;left:12px;right:12px;top:48px;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:10px 12px;font-weight:600}
+/* pipeline strip */
+.pipewrap{min-width:0}
+.pipe{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.st{flex:none;display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px 6px 7px;cursor:pointer;font-size:12px;color:var(--fg)}
+.st .n{font:500 10.5px var(--f-mono);width:20px;height:20px;border-radius:5px;display:grid;place-items:center;background:var(--dogblue);color:#fff}
+.st[aria-pressed="false"]{color:var(--muted);background:transparent;border-style:dashed}
+.st[aria-pressed="false"] .n{background:var(--sunken);color:var(--muted)}
+.st.fixed{cursor:default;opacity:.7}
+.st.fixed .n{background:var(--sunken);color:var(--muted)}
+.pipehead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.pipehead span{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pipehead small{color:var(--muted);font-size:12px}
+/* panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
+.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 6px;overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:12px 10px 10px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-size:13.5px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--dogyellow)}
+.tabs .count{font:500 10.5px var(--f-mono);background:var(--dogyellow-fill);color:#1a1500;border-radius:999px;padding:1px 6px;margin-left:4px}
+.pane{overflow:auto;padding:14px 16px 20px;min-height:0}
+.pane h3{font-family:var(--f-display);font-weight:600;font-size:15px;margin:18px 0 8px;letter-spacing:-.005em;text-wrap:balance}
+.pane h3:first-child{margin-top:2px}
+.lede{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.preset{border:1px solid var(--line);background:var(--ground);border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer;display:grid;gap:2px}
+.preset b{font-weight:600;font-size:13px}
+.preset span{color:var(--muted);font-size:11.5px;line-height:1.3}
+.preset[aria-pressed="true"]{border-color:var(--dogblue);box-shadow:inset 0 0 0 1px var(--dogblue)}
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:7px 0}
+.ctl label{font-size:13px;display:flex;align-items:center;gap:6px;min-width:0}
+.ctl output{font:500 12px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--fg);text-align:right}
+.ctl input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--dogblue);margin:2px 0 0}
+.ctl .hint{grid-column:1/-1;color:var(--muted);font-size:11.5px;line-height:1.35}
+.ctl select{grid-column:2;border:1px solid var(--line);background:var(--ground);border-radius:6px;padding:4px 6px;font-size:12.5px;max-width:190px}
+.conf{font:600 9.5px/1 var(--f-mono);border-radius:4px;padding:3px 4px;letter-spacing:.04em;cursor:help;flex:none}
+.conf.E{background:var(--fg);color:var(--surface)}
+.conf.P{background:var(--dogblue);color:#fff}
+.conf.S{border:1px dashed var(--muted);color:var(--muted);padding:2px 3px}
+.check{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;cursor:pointer}
+.check input{accent-color:var(--dogblue);width:16px;height:16px}
+.derived{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:12.5px;margin:6px 0 0}
+.derived dt{color:var(--muted)}
+.derived dd{margin:0;font:500 12px var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.fov{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:center;margin-top:6px}
+.fov svg{width:150px;height:auto;max-width:100%}
+.legend{display:grid;gap:5px;font-size:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.spec{display:grid;gap:4px;margin:4px 0 6px}
+.spec canvas{width:100%;height:22px;border-radius:5px;display:block}
+.spec .lab{display:flex;justify-content:space-between;font:500 10.5px var(--f-mono);color:var(--muted)}
+.spec .row{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.ticks{position:relative;height:14px;margin-left:52px}
+.ticks span{position:absolute;transform:translateX(-50%);font:500 10px var(--f-mono);color:var(--muted)}
+.ticks span.np{color:var(--fg)}
+/* conditions */
+.cgroup{margin-top:14px}
+.cgroup>h4{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;display:flex;justify-content:space-between}
+.cond{border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--ground)}
+.cond.on{background:var(--surface);border-color:var(--dogblue)}
+.chead{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer}
+.chead input{accent-color:var(--dogblue);width:16px;height:16px;flex:none}
+.chead .nm{font-weight:500;font-size:13px;flex:1;min-width:0}
+.chead .sv{font:500 11.5px var(--f-mono);color:var(--muted)}
+.photo{font:500 10px var(--f-mono);border-radius:999px;padding:2px 7px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.photo.yes{border-color:var(--dogyellow);color:var(--dogyellow)}
+.cbody{padding:0 10px 8px;border-top:1px solid var(--line)}
+.cbody p{margin:8px 0 0;color:var(--muted);font-size:12px}
+.row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+/* data */
+.jsonbox{position:relative;margin-top:6px}
+.jsonbox pre{margin:0;background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:12px/1.5 var(--f-mono);max-height:260px;overflow:auto;white-space:pre}
+.jsonbox .btn{position:absolute;top:6px;right:6px;padding:3px 9px;font-size:11.5px}
+textarea.imp{width:100%;min-height:120px;border:1px solid var(--line);border-radius:8px;background:var(--sunken);font:12px/1.5 var(--f-mono);padding:10px;resize:vertical}
+.note{font-size:12px;color:var(--muted);border-left:3px solid var(--dogyellow-fill);padding:4px 0 4px 10px;margin:10px 0}
+.msg{font-size:12.5px;margin-top:8px;min-height:1.2em}
+.msg.err{color:var(--warn)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--ground);padding:9px 14px;border-radius:8px;font-size:13px;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width: 960px){
+  html,body{height:auto}
+  .app{height:auto;grid-template-rows:auto auto}
+  .work{grid-template-columns:minmax(0,1fr)}
+  .viewport{height:auto;aspect-ratio:4/3;max-height:62vh;max-width:100%}
+  .hud .chip:last-child{display:none}
+  .panel{max-height:none}
+  .pane{overflow:visible}
+  .brand{width:100%}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <h1>Doggo Vision Lab</h1>
+        <p>An illustration built from the research catalog. Not a measured percept and not a diagnosis.</p>
+      </div>
+    </div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Sample scenes" id="samples">
+        <button type="button" data-sample="yard" aria-pressed="true">Backyard</button>
+        <button type="button" data-sample="street" aria-pressed="false">Night street</button>
+        <button type="button" data-sample="chart" aria-pressed="false">Vision chart</button>
+      </div>
+      <label class="btn" for="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 4v12"/><path d="m7 9 5-5 5 5"/></svg>Photo or video</label>
+      <input type="file" id="file" accept="image/*,video/*" class="vh">
+      <label class="btn" for="cam" id="camlabel" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
+      <input type="file" id="cam" accept="image/*" capture="environment" class="vh">
+      <button type="button" class="btn" id="camlive" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>Live camera</button>
+      <button type="button" class="btn" id="camflip" hidden>Switch camera</button>
+      <button type="button" class="btn" id="vidplay" hidden>Pause</button>
+      <button type="button" class="btn" id="camstop" hidden>Stop</button>
+      <div class="seg" role="group" aria-label="View" id="viewmode">
+        <button type="button" data-mode="0" aria-pressed="true">Split</button>
+        <button type="button" data-mode="1" aria-pressed="false">Dog</button>
+        <button type="button" data-mode="2" aria-pressed="false">Human</button>
+      </div>
+      <select class="sel" id="overlay" aria-label="Overlay">
+        <option value="0">No overlay</option>
+        <option value="1">Acuity map</option>
+        <option value="2">Field zones</option>
+      </select>
+      <button type="button" class="btn" id="save" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Save dog view</button>
+    </div>
+  </header>
+
+  <main class="work">
+    <section class="stagecol">
+      <div class="viewport" id="vp">
+        <canvas id="gl"></canvas>
+        <div class="split" id="split"><div class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg></div></div>
+        <span class="tag l" id="tagL">Human · same light</span>
+        <span class="tag r" id="tagR">Dog</span>
+        <div class="urgent" id="urgent" hidden></div>
+        <div class="camnote" id="camnote" role="status" hidden></div>
+        <div class="hud" id="hud"></div>
+        <div class="zoom" aria-label="Zoom">
+          <button type="button" id="zout" aria-label="Zoom out">−</button>
+          <button type="button" id="zlabel" title="Fit to view">Fit</button>
+          <button type="button" id="z11" title="One image pixel per screen pixel">1:1</button>
+          <button type="button" id="zin" aria-label="Zoom in">+</button>
+        </div>
+        <div class="drop" id="drop" hidden>Drop a photo or video to see it as a dog would</div>
+      </div>
+      <div class="pipewrap">
+        <div class="pipehead"><span>Pipeline, in the order light travels</span><small id="pipenote">Tap a stage to bypass it</small></div>
+        <div class="pipe" id="pipe"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" aria-selected="true" data-tab="dog">Dog</button>
+        <button role="tab" aria-selected="false" data-tab="scene">Scene</button>
+        <button role="tab" aria-selected="false" data-tab="vision">Vision</button>
+        <button role="tab" aria-selected="false" data-tab="cond">Conditions<span class="count" id="ccount" hidden>0</span></button>
+        <button role="tab" aria-selected="false" data-tab="data">Data</button>
+      </div>
+
+      <div class="pane" data-pane="dog">
+        <h3>Presets</h3>
+        <div class="presets" id="presets"></div>
+        <h3>Profile</h3>
+        <div id="profileCtl"></div>
+        <h3>Visual field</h3>
+        <div class="fov">
+          <svg id="fovsvg" viewBox="0 0 160 160" role="img" aria-label="Top-down visual field"></svg>
+          <div class="legend" id="fovlegend"></div>
+        </div>
+        <h3>Derived from the profile</h3>
+        <dl class="derived" id="derived"></dl>
+      </div>
+
+      <div class="pane" data-pane="scene" hidden>
+        <h3>Light and geometry</h3>
+        <p class="lede">These describe the photo. Acuity is drawn to scale for the field of view you set, so zoom to 1:1 to judge fine detail.</p>
+        <div id="sceneCtl"></div>
+      </div>
+
+      <div class="pane" data-pane="vision" hidden>
+        <h3>Colour</h3>
+        <div class="spec">
+          <div class="row"><span>Human</span><canvas id="specH" width="560" height="22"></canvas></div>
+          <div class="row"><span>Dog</span><canvas id="specD" width="560" height="22"></canvas></div>
+          <div class="ticks" id="ticks"></div>
+        </div>
+        <p class="lede">Two cone types peak near 430 and 555 nm. Reds collapse onto dark olive, greens onto mustard, and blue-green near 480 nm turns grey.</p>
+        <div id="visionCtl"></div>
+        <div class="row2"><button type="button" class="btn" id="visReset">Reset baseline values</button></div>
+        <p class="note">Badges show the catalog's confidence: <span class="conf E">E</span> established, <span class="conf P">P</span> probable, <span class="conf S">S</span> speculative. Nearly every disease magnitude is speculative.</p>
+      </div>
+
+      <div class="pane" data-pane="cond" hidden>
+        <p class="lede">Grouped in the order light passes through the eye. Severity runs 0 to 1, as in the detector schema. "Photo" shows whether a macro photo of the eye can reveal it.</p>
+        <div class="row2"><button type="button" class="btn" id="condClear">Clear all conditions</button></div>
+        <div id="condList"></div>
+      </div>
+
+      <div class="pane" data-pane="data" hidden>
+        <h3>Import</h3>
+        <p class="lede">Paste detector output (schema 0.1), condition hypotheses, or a profile. The mapping rules follow Part III §8 of the catalog.</p>
+        <textarea class="imp" id="imp" spellcheck="false" aria-label="JSON to import" placeholder='{"schema_version":"0.1","eye":"OD","findings":{...}}'></textarea>
+        <div class="row2">
+          <button type="button" class="btn primary" id="impApply">Apply JSON</button>
+          <button type="button" class="btn" id="impExample">Load example detector output</button>
+        </div>
+        <div class="msg" id="impMsg" role="status"></div>
+        <h3>Profile</h3>
+        <div class="jsonbox"><button type="button" class="btn" data-copy="jProfile">Copy</button><pre id="jProfile"></pre></div>
+        <h3>Condition hypotheses</h3>
+        <div class="jsonbox"><button type="button" class="btn" data-copy="jCond">Copy</button><pre id="jCond"></pre></div>
+        <h3>Shader parameters</h3>
+        <div class="jsonbox"><button type="button" class="btn" data-copy="jShader">Copy</button><pre id="jShader"></pre></div>
+      </div>
+    </aside>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script>
+// ---------- GLSL ----------
+const GLSL_COMMON = `
+float hash(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  float a=hash(i), b=hash(i+vec2(1.0,0.0)), c=hash(i+vec2(0.0,1.0)), d=hash(i+vec2(1.0,1.0));
+  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y); }
+vec3 srgb2lin(vec3 c){ return mix(c/12.92, pow((c+0.055)/1.055, vec3(2.4)), step(0.04045, c)); }
+vec3 lin2srgb(vec3 c){ c = clamp(c, 0.0, 1.0); return mix(c*12.92, 1.055*pow(c, vec3(1.0/2.4))-0.055, step(0.0031308, c)); }
+`;
+
+const VS = `#version 300 es
+in vec2 aPos; out vec2 vUv;
+void main(){ vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.0,1.0); }`;
+
+// Stage 0: decode sRGB to linear. Alpha carries a pseudo-HDR "highlight energy" so LDR photos can still bloom.
+const FS_LINEARIZE = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uSrc; uniform float uHdr; uniform float uAS;
+${GLSL_COMMON}
+void main(){
+  vec3 l = srgb2lin(texture(uSrc, vUv).rgb);
+  float mx = max(l.r, max(l.g, l.b));
+  float e = uHdr*pow(smoothstep(0.72, 1.0, mx), 2.0);
+  o = vec4(l, e/uAS);
+}`;
+
+// Gaussian pyramid: [1 3 3 1] binomial downsample done with four bilinear taps.
+const FS_DOWN = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uTex; uniform vec2 uTexel;
+void main(){
+  vec2 d = 0.75*uTexel;
+  o = 0.25*(texture(uTex, vUv+vec2(-d.x,-d.y)) + texture(uTex, vUv+vec2(d.x,-d.y)) +
+            texture(uTex, vUv+vec2(-d.x, d.y)) + texture(uTex, vUv+vec2(d.x, d.y)));
+}`;
+
+// Stages 1 to 10 in one composite pass, following the catalog's canonical order (S3).
+const FS_MAIN = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uPyr; uniform float uLevels; uniform float uAS;
+uniform vec2 uSize; uniform float uPPD; uniform vec2 uHalf; uniform float uTime; uniform float uTS;
+uniform float uAcu; uniform float uPeri; uniform vec2 uTopo; uniform float uBlurG; uniform float uDev;
+uniform vec3 uWarp; uniform vec4 uUlcer;
+uniform vec4 uOccA[4]; uniform vec4 uOccB[4]; uniform float uMucus;
+uniform vec4 uHaze; uniform vec4 uCat; uniform vec3 uCatTint; uniform float uSparkle;
+uniform float uContrast; uniform float uLocalDeg;
+uniform float uVeil; uniform float uBloom; uniform float uBloomDeg; uniform vec4 uHalo; uniform vec4 uGhost;
+uniform vec3 uTint;
+uniform mat3 uDog; uniform vec3 uRowL; uniform vec3 uRod; uniform float uM; uniform float uDesat; uniform float uCsf;
+uniform vec2 uTunnel; uniform vec4 uScot[6]; uniform float uArc; uniform float uStreak; uniform vec4 uCurtain; uniform float uResid;
+uniform vec4 uLid; uniform float uThird; uniform vec3 uThirdTint; uniform vec2 uNose;
+uniform float uGain; uniform float uLower; uniform float uNoise; uniform vec3 uPart;
+uniform float uOverlay; uniform vec2 uZone;
+${GLSL_COMMON}
+float sk(float k){ float p = pow(4.0, k); return sqrt(0.25*(p-1.0) + p/3.0); }
+vec4 bsp(vec2 uv, float lod){
+  vec2 sz = vec2(textureSize(uPyr, int(lod)));
+  vec2 st = uv*sz - 0.5; vec2 i = floor(st); vec2 f = st - i;
+  vec2 f2 = f*f, f3 = f2*f;
+  vec2 w0 = (1.0 - 3.0*f + 3.0*f2 - f3)/6.0;
+  vec2 w1 = (4.0 - 6.0*f2 + 3.0*f3)/6.0;
+  vec2 w2 = (1.0 + 3.0*f + 3.0*f2 - 3.0*f3)/6.0;
+  vec2 w3 = f3/6.0;
+  vec2 g0 = w0+w1, g1 = w2+w3;
+  vec2 h0 = (i - 0.5 + w1/g0)/sz, h1 = (i + 1.5 + w3/g1)/sz;
+  return g0.x*(g0.y*textureLod(uPyr, vec2(h0.x,h0.y), lod) + g1.y*textureLod(uPyr, vec2(h0.x,h1.y), lod)) +
+         g1.x*(g0.y*textureLod(uPyr, vec2(h1.x,h0.y), lod) + g1.y*textureLod(uPyr, vec2(h1.x,h1.y), lod));
+}
+// Gaussian blur of arbitrary sigma (in px): exact taps when small, B-spline pyramid lookup otherwise.
+vec4 blurS(vec2 uv, float s){
+  if(s < 0.4) return textureLod(uPyr, uv, 0.0);
+  if(s < 1.44){
+    vec2 px = 1.0/uSize; vec4 acc = vec4(0.0); float ws = 0.0;
+    for(int y=-2; y<=2; y++) for(int x=-2; x<=2; x++){
+      float w = exp(-float(x*x+y*y)/(2.0*s*s));
+      acc += w*textureLod(uPyr, uv + vec2(float(x),float(y))*px, 0.0); ws += w; }
+    return acc/ws;
+  }
+  float k0 = clamp(floor(log2(s/0.764)), 1.0, uLevels-2.0);
+  float a = sk(k0), b = sk(k0+1.0);
+  float t = clamp((s*s - a*a)/(b*b - a*a), 0.0, 1.0);
+  return mix(bsp(uv, k0), bsp(uv, k0+1.0), t);
+}
+const vec3 Y709 = vec3(0.2126, 0.7152, 0.0722);
+void main(){
+  vec2 p = (vUv - 0.5)*2.0*uHalf;          // field position in degrees, +y up
+  vec2 pe = vec2(p.x*uTS, p.y);            // eye frame: +x is the temporal field
+  vec2 deg2uv = 1.0/(2.0*uHalf);
+  float r = length(p);
+
+  // ---- Stage 8 topography: visual streak vs area centralis sets how blur grows with eccentricity
+  float g = exp(-0.5*(p.x*p.x/(uTopo.x*uTopo.x) + p.y*p.y/(uTopo.y*uTopo.y)));
+  float sA = uAcu*(1.0 + uPeri*(1.0 - g));
+
+  // ---- Stage 3 tear film and cornea: distortion
+  vec2 uv = vUv;
+  if(uWarp.x > 0.0){
+    vec2 q = vUv*uWarp.y + vec2(uWarp.z*0.13, -uWarp.z*0.07);
+    vec2 w = vec2(vnoise(q), vnoise(q + vec2(17.3, 5.1))) - 0.5;
+    uv += w*2.0*uWarp.x*deg2uv;
+  }
+  float ul = 0.0;
+  if(uUlcer.w > 0.0){
+    vec2 uc = vec2(uUlcer.x*uTS, uUlcer.y);
+    float d = length(p - uc)/uUlcer.z;
+    ul = (1.0 - smoothstep(0.5, 1.3, d))*uUlcer.w;
+    vec2 w = vec2(vnoise(p*0.25 + 3.1), vnoise(p*0.25 + 9.7)) - 0.5;
+    uv += w*ul*1.5*deg2uv;
+  }
+
+  // ---- Stages 3, 5, 6: all optical blur combined in quadrature
+  float sig = sqrt(sA*sA + uBlurG*uBlurG + (2.4*ul)*(2.4*ul))*uDev;
+  float spx = sig*uPPD;
+  vec3 c = blurS(uv, spx).rgb;
+
+  // ---- Stage 4/5: ghost image (lens subluxation, iris holes)
+  if(uGhost.x > 0.0){
+    vec2 off = vec2(uGhost.y*uTS, uGhost.z)*deg2uv;
+    c = mix(c, blurS(uv + off, max(spx, uGhost.w*uPPD)).rgb, uGhost.x);
+  }
+  vec3 mean = textureLod(uPyr, vec2(0.5), uLevels - 1.0).rgb;
+  vec3 lm = blurS(uv, max(uLocalDeg*uPPD, spx*2.0)).rgb;
+
+  // ---- Stage 3: corneal occluders (pigment, pannus) and stage 4 chamber occluders (hyphema, hypopyon).
+  // They sit far from the focal plane, so they are soft field-wedges, not shapes.
+  vec3 trans = vec3(1.0);
+  for(int i=0; i<4; i++){
+    if(uOccB[i].a > 0.0){
+      float pr = dot(pe, uOccA[i].xy) + 6.0*(vnoise(pe*0.05 + float(i)*7.0) - 0.5);
+      float cov = smoothstep(uOccA[i].z - uOccA[i].w, uOccA[i].z + uOccA[i].w, pr);
+      trans *= mix(vec3(1.0), uOccB[i].rgb, min(1.0, cov*1.2))*(1.0 - cov*uOccB[i].a);
+    }
+  }
+  c *= trans; lm *= trans;
+
+  // ---- Stage 8: contrast sensitivity, a soft threshold on dog-luminance detail
+  if(uCsf > 0.0){
+    vec3 sr = blurS(uv, max(spx*2.5, 2.5)).rgb*trans;
+    float L = mix(dot(uRowL, c), dot(uRod, c), uM);
+    float Ls = mix(dot(uRowL, sr), dot(uRod, sr), uM);
+    float d = L - Ls; float t = uCsf*(Ls + 0.02);
+    float k = d*d/(d*d + t*t + 1e-8);
+    c *= (Ls + d*k)/max(L, 1e-4);
+  }
+
+  if(uMucus > 0.0){
+    float st = vnoise(vec2(vUv.x*3.0 + uTime*0.03, vUv.y*22.0 + sin(vUv.x*4.0)*0.8));
+    c = mix(c, lm*1.08 + 0.015, uMucus*smoothstep(0.55, 0.85, st));
+  }
+
+  // ---- Stage 5: lens haze with spatial mask by cataract type, then contrast loss
+  float r65 = r/65.0; float cm = 1.0;
+  if(uCat.z > 0.5 && uCat.z < 1.5){
+    float ang = atan(p.y, p.x);
+    float sp = smoothstep(0.25, 0.85, 0.5 + 0.5*sin(ang*11.0 + 3.0*vnoise(vec2(ang*2.0, 1.3))));
+    cm = mix(0.15, 1.0, sp)*smoothstep(uCat.w - 0.18, uCat.w + 0.18, r65);
+  } else if(uCat.z > 1.5){
+    cm = mix(0.25, 1.0, exp(-r65*r65/(2.0*0.45*0.45)));
+  }
+  float hc = uCat.x*cm, hg = uHaze.a;
+  float ht = min(0.95, hg + hc - hg*hc);
+  float mL = dot(mean, Y709), lL = dot(lm, Y709);
+  vec3 hcol = mix(mL, lL, 0.5)*mix(uHaze.rgb, uCatTint, hc/(hc + hg + 1e-4))*1.05;
+  c = lm + (c - lm)*uContrast*(1.0 - uCat.y*cm);
+  c = mix(c, hcol, ht);
+
+  // ---- Stage 10 glare: veiling glare (1/theta^2-like tail from coarse levels), bloom and halos
+  if(uVeil > 0.0){
+    vec3 v = vec3(0.0); float ws = 0.0;
+    for(int k=3; k<13; k++){ float fk = float(k); if(fk > uLevels - 1.0) break;
+      float w = 1.0/(fk - 1.5); vec4 t = textureLod(uPyr, uv, fk); v += w*t.rgb*(1.0 + t.a*uAS); ws += w; }
+    c += uVeil*v/max(ws, 1e-4);
+  }
+  if(uBloom > 0.0){
+    float bp = uBloomDeg*uPPD;
+    vec4 b1 = blurS(uv, bp), b2 = blurS(uv, bp*0.3);
+    vec3 c1 = b1.rgb/(max(max(b1.r,b1.g),b1.b) + 1e-3), c2 = b2.rgb/(max(max(b2.r,b2.g),b2.b) + 1e-3);
+    c += uBloom*(0.55*b1.a*c1 + 0.45*b2.a*c2)*uAS*0.5;
+  }
+  if(uHalo.x > 0.0){
+    vec2 R = uHalo.y*deg2uv;
+    float lv = clamp(floor(log2(max(uHalo.z*uPPD, 1.0)/0.764)), 1.0, uLevels - 2.0);
+    vec3 h = vec3(0.0);
+    for(int i=0; i<20; i++){
+      float a = 6.2831853*float(i)/20.0; vec2 d = vec2(cos(a), sin(a))*R;
+      h.r += textureLod(uPyr, uv + d*(1.0 + 0.07*uHalo.w), lv).a;
+      h.g += textureLod(uPyr, uv + d, lv).a;
+      h.b += textureLod(uPyr, uv + d*(1.0 - 0.07*uHalo.w), lv).a;
+    }
+    c += uHalo.x*uAS*h/20.0*0.9;
+  }
+  if(uSparkle > 0.0){
+    vec2 cell = floor(vUv*uSize/3.0); float hs = hash(cell);
+    if(hs < uSparkle*0.006) c += vec3(0.9, 0.95, 1.0)*(0.5 + 0.5*sin(uTime*6.0 + hs*4000.0))*0.8;
+  }
+  c *= uTint;
+
+  // ---- Stage 7: dichromat colour (photopic) mixed toward rod luminance (scotopic)
+  float rod = dot(uRod, c);
+  c = mix(uDog*c, vec3(rod)*vec3(0.95, 1.0, 1.06), uM);
+
+  // ---- Stage 9: retinal and neural field masks, combined by minimum, applied after optical blur
+  float vis = 1.0;
+  if(uTunnel.x < 179.0) vis = min(vis, 1.0 - smoothstep(uTunnel.x - uTunnel.y, uTunnel.x + uTunnel.y, r + 3.0*(vnoise(p*0.12) - 0.5)));
+  for(int i=0; i<6; i++){
+    if(uScot[i].w > 0.0){
+      vec2 sc = vec2(uScot[i].x*uTS, uScot[i].y);
+      float d = length(p - sc)/uScot[i].z + 0.18*(vnoise(p*0.35 + float(i)*3.0) - 0.5);
+      vis = min(vis, 1.0 - uScot[i].w*(1.0 - smoothstep(0.72, 1.05, d)));
+    }
+  }
+  if(uArc > 0.0){
+    float ang = atan(p.y, p.x);
+    float band = smoothstep(5.0, 9.0, r)*(1.0 - smoothstep(18.0, 27.0, r));
+    float ver = smoothstep(0.25, 0.85, abs(sin(ang)));
+    float nz = vnoise(p*0.16 + 3.0);
+    vis = min(vis, 1.0 - min(1.0, uArc*1.4)*band*ver*smoothstep(0.55 - 0.4*uArc, 0.8 - 0.3*uArc, nz));
+  }
+  if(uStreak > 0.0){
+    float n1 = vnoise(vec2(p.x*0.07, p.y*0.55) + 7.0);
+    float n2 = vnoise(p*0.11 + 11.0);
+    vis = min(vis, 1.0 - uStreak*smoothstep(0.66, 0.74, n1));
+    vis = min(vis, 1.0 - uStreak*smoothstep(0.78 - 0.25*uStreak, 0.86 - 0.2*uStreak, n2));
+  }
+  if(uCurtain.w > 0.0){
+    float pr = dot(p, uCurtain.xy) + 4.0*(vnoise(p*0.09) - 0.5);
+    vis = min(vis, 1.0 - smoothstep(uCurtain.z - uCurtain.w, uCurtain.z + uCurtain.w, pr));
+  }
+  vec3 res = textureLod(uPyr, vUv, max(uLevels - 4.0, 0.0)).rgb;
+  float resL = mix(dot(uRowL, res), dot(uRod, res), uM);
+  c = mix(vec3(resL*uResid), c, vis);
+  c = mix(c, vec3(dot(c, Y709)), uDesat);
+
+  // ---- Stage 2: lids, third eyelid; Stage 1: muzzle silhouette. All far out of focus, so very soft.
+  float x = vUv.x*2.0 - 1.0;
+  if(uLid.x > 0.0 || uLid.y > 0.0 || uLid.w > 0.0){
+    float top = uLid.x + uLid.w*0.6, bot = uLid.y + uLid.w*0.55;
+    float yT = 1.0 - top*(1.15 - 0.3*x*x), yB = bot*(1.15 - 0.3*x*x);
+    float mT = top > 0.0 ? smoothstep(yT - 0.07, yT + 0.07, vUv.y) : 0.0;
+    float mB = bot > 0.0 ? 1.0 - smoothstep(yB - 0.07, yB + 0.07, vUv.y) : 0.0;
+    c = mix(c, c*vec3(0.12, 0.035, 0.03) + vec3(0.004, 0.001, 0.001), max(mT, mB));
+  }
+  if(uThird > 0.0){
+    float asp = uSize.x/uSize.y;
+    vec2 q = vec2((uTS > 0.0 ? vUv.x : 1.0 - vUv.x)*asp, vUv.y);
+    float cov = 1.0 - smoothstep(uThird*0.9 - 0.22, uThird*0.9 + 0.22, length(q));
+    c = mix(c, c*uThirdTint*0.55 + uThirdTint*0.01, cov*0.9);
+  }
+  if(uNose.y > 0.0){
+    vec2 q = (p - vec2(0.0, -uHalf.y - uNose.x*0.3))/vec2(uNose.x, uNose.x*0.8);
+    c = mix(c, c*0.08, (1.0 - smoothstep(0.7, 1.2, length(q)))*0.92);
+  }
+
+  // ---- Stage 10: tapetal lower-field boost, adaptation gain, luminance-dependent noise
+  float lower = smoothstep(0.0, -1.0, p.y/max(uHalf.y, 1.0));
+  c *= 1.0 + uLower*lower; c += uLower*0.25*lower*mL;
+  c *= uGain;
+  if(uNoise > 0.0){
+    vec2 nc = floor(vUv*uSize/1.5);
+    float n = hash(nc + fract(uTime*3.7)*vec2(131.0, 71.0)) + hash(nc*1.7 + fract(uTime*5.3)*vec2(17.0, 253.0)) - 1.0;
+    c += vec3(n*uNoise*sqrt(dot(c, Y709) + 0.003)*1.6);
+  }
+  // ---- Stage 11 (drawn here): vitreous particles
+  if(uPart.x > 0.0){
+    float asp = uSize.x/uSize.y;
+    for(int l=0; l<2; l++){
+      float sc = l == 0 ? 14.0 : 7.0;
+      vec2 q = vec2(vUv.x*asp, vUv.y)*sc + vec2(sin(uTime*0.25 + float(l))*0.6, -uTime*0.05*(uPart.y > 0.5 ? 0.3 : 1.0));
+      vec2 id = floor(q), f = fract(q) - 0.5;
+      float h = hash(id + float(l)*13.0);
+      if(h < uPart.x){
+        vec2 off = (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5)*0.6 + 0.12*vec2(sin(uTime*0.9 + h*30.0), cos(uTime*0.7 + h*20.0));
+        float d = length(f - off);
+        if(uPart.y < 0.5){ float rr = 0.05 + 0.04*h; c += vec3((1.0 - smoothstep(rr*0.3, rr, d))*0.4*(0.6 + 0.4*sin(uTime*3.0 + h*50.0))); }
+        else { float rr = 0.16 + 0.15*h; c *= 1.0 - 0.35*(1.0 - smoothstep(rr*0.3, rr, d)); }
+      }
+    }
+  }
+  // ---- Overlays
+  if(uOverlay > 0.5 && uOverlay < 1.5){
+    float lc = log2(0.389/max(sig, 1e-4));
+    vec3 ramp = mix(vec3(0.02, 0.05, 0.85), vec3(1.0, 0.6, 0.0), clamp((lc - 1.0)/3.0, 0.0, 1.0));
+    float ln = 1.0 - smoothstep(0.0, fwidth(lc)*1.5, abs(fract(lc + 0.5) - 0.5));
+    c = mix(vec3(dot(c, Y709)), ramp, 0.72); c = mix(c, vec3(1.0), ln*0.8);
+  } else if(uOverlay > 1.5){
+    float bx = abs(p.x) - uZone.x;
+    float line = 1.0 - smoothstep(0.0, fwidth(p.x)*1.5, abs(bx));
+    c = mix(c, vec3(0.9, 0.62, 0.03), line*step(0.5, fract(p.y*0.3))*0.95);
+    if(bx > 0.0) c *= 0.78;
+    if(uTunnel.x < 179.0){ float lt = 1.0 - smoothstep(0.0, fwidth(r)*1.5, abs(r - uTunnel.x)); c = mix(c, vec3(0.2, 0.3, 1.0), lt); }
+  }
+  // ---- Stage 12: soft shoulder then encode to sRGB
+  c = max(c, 0.0);
+  c = mix(c, 0.8 + 0.2*(1.0 - exp(-(c - 0.8)/0.2)), step(0.8, c));
+  o = vec4(lin2srgb(c), 1.0);
+}`;
+
+// Stage 11: rod temporal integration (EMA) and motion salience.
+const FS_TEMPORAL = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uCur; uniform sampler2D uPrev; uniform float uA; uniform float uSal;
+void main(){
+  vec3 c = texture(uCur, vUv).rgb, p = texture(uPrev, vUv).rgb;
+  float d = abs(dot(c - p, vec3(0.3333)));
+  float per = 0.4 + 0.6*smoothstep(0.1, 0.5, length(vUv - 0.5));
+  c *= 1.0 + uSal*per*smoothstep(0.015, 0.12, d);
+  o = vec4(mix(p, c, uA), 1.0);
+}`;
+
+const FS_DISPLAY = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uDogT; uniform sampler2D uSrcT;
+uniform vec4 uRect; uniform float uZoom; uniform vec2 uCenter; uniform float uSplitX; uniform float uMode;
+uniform vec3 uBg; uniform float uHG; uniform float uHD;
+${GLSL_COMMON}
+void main(){
+  vec2 fc = gl_FragCoord.xy;
+  vec2 loc = (fc - uRect.xy)/uRect.zw;
+  if(loc.x < 0.0 || loc.y < 0.0 || loc.x > 1.0 || loc.y > 1.0){ o = vec4(uBg, 1.0); return; }
+  vec2 iuv = (loc - 0.5)/uZoom + uCenter;
+  bool dog = uMode > 0.5 && uMode < 1.5 || (uMode < 0.5 && fc.x >= uSplitX);
+  vec3 c;
+  if(dog) c = texture(uDogT, iuv).rgb;
+  else {
+    vec3 l = srgb2lin(texture(uSrcT, iuv).rgb)*uHG;
+    l = mix(l, vec3(dot(l, vec3(0.2126, 0.7152, 0.0722))), uHD);
+    c = lin2srgb(l);
+  }
+  o = vec4(c, 1.0);
+}`;
+// ---------- Model: catalog values, profile -> derived -> condition hypotheses -> shader parameters ----------
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a)*t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0)/(e1 - e0), 0, 1); return t*t*(3 - 2*t); };
+const sigmoid = x => 1/(1 + Math.exp(-x));
+const REF_FOV = 120; // catalog Part III expresses image fractions for a ~120 degree image
+const frac = f => f*REF_FOV; // fraction of image width -> degrees, for geometry (radii, field positions)
+// Part III blur fractions are calibrated against its baseline acuity_sigma_frac = 0.002, which Part I puts at about
+// 3 arcmin. Converting them with a 25 degree reference keeps condition blur in proportion to normal dog acuity.
+const REF_BLUR = 25;
+const fracB = f => f*REF_BLUR;
+
+// Part I §1.5: linear sRGB -> dog cone catches, and the display axis for the single opponent channel
+const L_DOG = [0.1824, 0.6697, 0.1478];
+const S_DOG = [0.0367, 0.0656, 0.8977];
+const ROD = [-0.0508, 0.6586, 0.3922];
+const B_AXIS = [-0.190, -0.0445, 1.0];
+function dogMatrix(k){ // rows; k = 1 is the catalog's recommended matrix
+  return [0, 1, 2].map(i => [0, 1, 2].map(j => L_DOG[j] + k*B_AXIS[i]*(S_DOG[j] - L_DOG[j])));
+}
+
+// Breed table: cephalic index (anchors Speculative), lifespan, refraction offset (Part II A5), cataract multiplier, tapetum
+const BREEDS = {
+  mixed:       {name:'Mixed breed', ci:62, L:13, dD:0, cat:1, tap:1},
+  labrador:    {name:'Labrador retriever', ci:62, L:12.5, dD:0, cat:1.2, tap:1},
+  golden:      {name:'Golden retriever', ci:60, L:12, dD:0, cat:1.2, tap:1},
+  gsd:         {name:'German shepherd', ci:56, L:11, dD:-1, cat:1, tap:1},
+  rottweiler:  {name:'Rottweiler', ci:62, L:10, dD:-1, cat:1, tap:1},
+  greyhound:   {name:'Greyhound', ci:46, L:12.5, dD:0, cat:1, tap:1},
+  whippet:     {name:'Whippet', ci:48, L:13.5, dD:0, cat:1, tap:1},
+  collie:      {name:'Rough collie', ci:48, L:13, dD:0, cat:1, tap:1},
+  aussie:      {name:'Australian shepherd', ci:60, L:13, dD:0.75, cat:2, tap:1},
+  husky:       {name:'Siberian husky', ci:60, L:13, dD:0, cat:2, tap:1},
+  malamute:    {name:'Alaskan malamute', ci:60, L:11, dD:0.75, cat:1, tap:1},
+  poodle_toy:  {name:'Toy poodle', ci:60, L:14.5, dD:-1, cat:3, tap:0.88},
+  schnauzer:   {name:'Miniature schnauzer', ci:62, L:13.5, dD:-1, cat:2, tap:0.88},
+  cocker:      {name:'Cocker spaniel', ci:64, L:12.5, dD:0, cat:2, tap:1},
+  bichon:      {name:'Bichon frise', ci:66, L:14, dD:0, cat:3, tap:0.88},
+  boston:      {name:'Boston terrier', ci:82, L:12, dD:0, cat:3, tap:0.88},
+  pug:         {name:'Pug', ci:88, L:13, dD:0, cat:1, tap:0.88},
+  frenchie:    {name:'French bulldog', ci:86, L:11, dD:0, cat:1, tap:0.88},
+  shihtzu:     {name:'Shih Tzu', ci:85, L:13.5, dD:0, cat:1, tap:0.88},
+  chihuahua:   {name:'Chihuahua', ci:78, L:14.5, dD:0, cat:1, tap:0.88},
+  greatdane:   {name:'Great Dane', ci:58, L:7.5, dD:0, cat:1, tap:1},
+};
+
+// Conditions, grouped along the light path. photo = detectability from a macro eye photo (Part III / S5).
+const GROUPS = [
+  ['adnexa', 'Lids and third eyelid'], ['cornea', 'Tear film and cornea'], ['uvea', 'Chamber, iris and pressure'],
+  ['lens', 'Lens'], ['retina', 'Vitreous, retina and optic nerve'], ['globe', 'Whole globe'],
+];
+const CONDS = [
+  {id:'cherry_eye', g:'adnexa', name:'Cherry eye', photo:'yes', d:'Prolapsed third-eyelid gland. A small soft occluder low on the nasal side.', s:0.5},
+  {id:'entropion', g:'adnexa', name:'Entropion', photo:'yes', d:'Inrolled lid. Indirect effects: squint, tearing and a wet blur.', s:0.5},
+  {id:'horner', g:'adnexa', name:'Horner syndrome', photo:'yes', d:'Small pupil, drooping upper lid and a raised third eyelid.', s:0.6},
+  {id:'kcs', g:'cornea', name:'Dry eye (KCS)', photo:'partly', d:'Tear film breaks up between blinks: blur grows, patches warp, mucus smears, bright light makes the dog squint. Animated.', s:0.5, extras:[{k:'chronic', t:'bool', label:'Chronic (adds pigment)'}]},
+  {id:'pigmentary_keratitis', g:'cornea', name:'Pigmentary keratitis', photo:'yes', d:'Melanin on the cornea, usually from the nasal side, veiling the temporal field. Present in about 92% of UK pugs.', s:0.35, extras:[{k:'origin', t:'sel', label:'Starts from', opts:[['medial','Nasal cornea'],['temporal','Temporal cornea'],['diffuse','Diffuse']]}]},
+  {id:'corneal_edema', g:'cornea', name:'Corneal edema', photo:'yes', d:'Blue-white corneal haze with coloured halos around lights.', s:0.5},
+  {id:'corneal_ulcer', g:'cornea', name:'Corneal ulcer', photo:'partly', d:'Local haze and warp over the ulcer, tearing and a squint.', s:0.5},
+  {id:'pannus', g:'cornea', name:'Pannus (CSK)', photo:'yes', d:'Pink-brown vascular tissue creeping in from the temporal cornea, veiling the nasal field.', s:0.4},
+  {id:'lipid_dystrophy', g:'cornea', name:'Corneal lipid deposits', photo:'yes', d:'Soft white veil, mild glare and a faint sparkle.', s:0.4},
+  {id:'glaucoma', g:'uvea', name:'Glaucoma', photo:'partly', d:'Pressure causes edema, halos and dimming. Nerve damage closes the field with arc-shaped gaps.', s:0.4, extras:[{k:'damage', t:'num', label:'Nerve damage', min:0, max:1, step:0.01, def:0.4}]},
+  {id:'uveitis', g:'uvea', name:'Uveitis', photo:'partly', d:'Aqueous flare fogs the view; a small pupil dims it; floaters drift; pus settles low in the chamber and hides the upper field.', s:0.45},
+  {id:'hyphema', g:'uvea', name:'Hyphema', photo:'yes', d:'Blood in the chamber: red haze and an upper-field occluder as blood settles.', s:0.4},
+  {id:'iris_atrophy', g:'uvea', name:'Iris atrophy', photo:'yes', d:'The pupil cannot close fully: glare, light sensitivity and faint ghosts.', s:0.5},
+  {id:'nuclear_sclerosis', g:'lens', name:'Nuclear sclerosis', photo:'partly', d:'Normal ageing of the lens core. Small effects: slight blur, contrast loss and bloom, mild myopic shift. Owners see blue haze; the dog does not.', s:0.6},
+  {id:'cataract', g:'lens', name:'Cataract', photo:'yes', d:'Lens opacity scatters light: haze, contrast loss, glare and blur. Mature cataract leaves only light and dark.', s:0.5, extras:[{k:'type', t:'sel', label:'Type', opts:[['cortical','Cortical spokes'],['nuclear','Nuclear'],['posterior_subcapsular','Posterior subcapsular'],['diffuse','Diffuse']]},{k:'hypermature', t:'bool', label:'Hypermature (crystals)'}]},
+  {id:'lens_luxation', g:'lens', name:'Lens luxation', photo:'partly', d:'Displaced lens: a doubled ghost image that wobbles, plus blur.', s:0.5},
+  {id:'asteroid_hyalosis', g:'retina', name:'Asteroid hyalosis', photo:'partly', d:'Small bright particles that swirl in the vitreous. Usually minimal effect.', s:0.5},
+  {id:'pra', g:'retina', name:'Progressive retinal atrophy', photo:'no', d:'Night vision fails first, then the field closes to a tunnel, then blindness. Often a secondary cataract late.', s:0.5},
+  {id:'sards', g:'retina', name:'SARDS', photo:'no', d:'Sudden acquired retinal degeneration: global loss of light and contrast within days.', s:0.6},
+  {id:'cea', g:'retina', name:'Collie eye anomaly', photo:'no', d:'Usually silent; colobomas make small blind spots; severe cases detach.', s:0.5},
+  {id:'retinal_detachment', g:'retina', name:'Retinal detachment', photo:'partly', d:'A curtain of lost field moving in from one side.', s:0.4, extras:[{k:'dir_deg', t:'num', label:'Curtain from', min:0, max:359, step:1, def:90, unit:'°'}]},
+  {id:'retinal_dysplasia', g:'retina', name:'Retinal dysplasia', photo:'no', d:'Retinal folds and geographic patches become streaky blind spots.', s:0.5},
+  {id:'optic_neuritis', g:'retina', name:'Optic neuritis', photo:'no', d:'Central blind spot, faded colour and lower contrast (human analogue).', s:0.5},
+  {id:'microphthalmia', g:'globe', name:'Microphthalmia (merle)', photo:'partly', d:'Small eye from double merle: blur, smaller field and coloboma gaps.', s:0.5},
+];
+const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
+
+const VISION_DEFAULTS = {cpd:8, chroma:1, csf:0.03, periph:3, nightGain:2.5, lower:0.18, noise:0.5, veil:0.05, salience:0.2, rodTau:100, ageLens:0.5, hdr:4};
+
+function catStage(s, hyper){ if(hyper) return 'hypermature'; return s < 0.15 ? 'incipient' : s < 0.85 ? 'immature' : 'mature'; }
+function skullOf(ci){ return ci >= 80 ? 'brachycephalic' : ci <= 52 ? 'dolichocephalic' : 'mesocephalic'; }
+
+// Stage ids in the order the catalog's S3 table lists them
+const STAGES = [
+  {n:0, name:'Decode', fixed:true, tip:'sRGB to linear light'},
+  {n:1, name:'Geometry', tip:'Muzzle silhouette and field zones'},
+  {n:2, name:'Lids', tip:'Squint, ptosis, third eyelid, blinks'},
+  {n:3, name:'Tear film & cornea', tip:'Tear break-up, pigment, pannus, edema, ulcers'},
+  {n:4, name:'Chamber & iris', tip:'Pupil size and glare, hyphema, uveitis'},
+  {n:5, name:'Lens', tip:'Nuclear sclerosis, cataract, luxation'},
+  {n:6, name:'Optics', tip:'Base acuity, defocus, puppy development'},
+  {n:7, name:'Colour', tip:'Dichromat matrix and rod mixing'},
+  {n:8, name:'Retinal acuity', tip:'Visual streak or area centralis, contrast sensitivity'},
+  {n:9, name:'Field loss', tip:'Tunnel vision, scotomas, curtains'},
+  {n:10, name:'Gain, glare, noise', tip:'Night gain, tapetum, veiling glare, bloom, noise'},
+  {n:11, name:'Temporal', tip:'Rod integration, motion salience, blinks, particles'},
+  {n:12, name:'Encode', fixed:true, tip:'Linear to sRGB'},
+];
+
+// Compile state -> {derived, hyp, shader (schema §8 part 3), U (uniforms), anim}
+function compile(state, srcInfo){
+  const P = state.profile, V = state.vision, S = state.scene, on = state.stages;
+  const br = BREEDS[P.breed] || BREEDS.mixed;
+  const age = P.age_years, L = P.lifespan_years, a = age/L;
+  const s = clamp((80 - P.ci)/30, 0, 1);
+  const brachy = P.ci >= 80;
+  const F = lerp(200, 270, s), B = lerp(60, 30, s), noseW = lerp(3, 22, s);
+  const topoH = lerp(15, 45, s), topoV = lerp(15, 10, s);
+  const tw = age*52, closed = tw < 2;
+  const dev = closed ? 0 : smooth(2, 7, tw)*smooth(4, 14, tw);
+  const NS = V.ageLens > 0 ? smooth(0.45, 0.85, a) : 0;
+  const catAge = clamp(sigmoid((a - 0.75)/0.12)*br.cat, 0, 1)*V.ageLens;
+  const Amax = 2.5*(1 - smooth(0.4, 0.9, a)) + 0.5;
+  const ys = age*12.5/L;
+  const Rp = clamp(1 - 0.028*(ys - 1), 0.2, 1), Rs = clamp(1 - 0.035*(ys - 1), 0.1, 1);
+  const fc = lerp(75, 58, smooth(0.5, 1.0, a));
+  const coat = P.coat;
+  let pig = 1; if(coat === 'merle_MM' || coat === 'white') pig = 0.2; else if(coat === 'merle_Mm' || P.iris === 'blue') pig = 0.5; else if(coat === 'dilute') pig = 0.8;
+  const T = coat === 'merle_MM' ? 0 : P.tapetum;
+  const m = 1 - smooth(-2, 1, S.logL); // mesopic weight, shifted ~0.5 log up from human (Coile 1989)
+
+  // condition severities
+  const C = state.conditions;
+  const sv = id => (C[id] && C[id].on) ? C[id].s : 0;
+  const ex = (id, k, d) => (C[id] && C[id].x && C[id].x[k] !== undefined) ? C[id].x[k] : d;
+  const pra = sv('pra');
+  let cat = sv('cataract'); if(pra > 0.7) cat = Math.max(cat, 0.3*(pra - 0.7)/0.3);
+  const kcs = sv('kcs');
+  let pk = sv('pigmentary_keratitis'); if(kcs > 0 && ex('kcs', 'chronic', false)) pk = Math.max(pk, 0.5*kcs);
+  const pkOrigin = sv('pigmentary_keratitis') > 0 ? ex('pigmentary_keratitis', 'origin', 'medial') : 'medial';
+  const cea = sv('cea');
+  let rd = sv('retinal_detachment'); if(cea > 0.8) rd = Math.max(rd, (cea - 0.8)/0.2*0.6);
+  const glS = sv('glaucoma'), glD = C.glaucoma && C.glaucoma.on ? ex('glaucoma', 'damage', 0.4) : 0;
+  const uve = sv('uveitis'), hyp = sv('hyphema'), ia = clamp(0.3*smooth(0.6, 1.0, a)*(V.ageLens > 0 ? 1 : 0) + sv('iris_atrophy'), 0, 1);
+  const nsC = sv('nuclear_sclerosis'), lux = sv('lens_luxation'), edema = sv('corneal_edema'), ulcer = sv('corneal_ulcer');
+  const pannus = sv('pannus'), lipid = sv('lipid_dystrophy'), horner = sv('horner'), cherry = sv('cherry_eye'), entro = sv('entropion');
+  const sards = sv('sards'), on_ = sv('optic_neuritis'), ast = sv('asteroid_hyalosis'), dys = sv('retinal_dysplasia'), micro = sv('microphthalmia');
+  const NSall = Math.max(NS, nsC);
+
+  // pupil (Mills 2022: max 6-11 mm), glare ∝ (d/dref)^2
+  let dmin = 4.0, dmax = 9.0;
+  dmin = dmin + 0.6*ia*(dmax - dmin);
+  dmin = lerp(dmin, dmax, Math.max(0.6*glS, 0.5*pra, 0.7*sards));
+  let pupil = lerp(dmin, dmax, m)*(1 - 0.4*uve)*(1 - 0.35*horner);
+  const glarePupil = on[4] ? (pupil/6.5)**2 : 1;
+
+  // ---- blur buckets (degrees)
+  const q = x => x*x;
+  let corneaB2 = 0, lensB2 = 0, opticsB2 = 0, retinaB2 = 0;
+  const pkAx = clamp((pk - 0.7)/0.3, 0, 1);
+  if(on[3]){
+    corneaB2 += q(pkAx > 0 ? lerp(fracB(0.02), fracB(0.06), pkAx) : 0) + q(fracB(0.015)*edema) + q(fracB(0.015)*glS) + q(fracB(0.003)*lipid)
+      + q(pannus > 0.6 ? fracB(0.03)*(pannus - 0.6)/0.4 : 0) + q(fracB(0.006)*entro);
+  }
+  if(on[5]){
+    // Part D's degree values assume a 0.12 deg base blur; Part I's baseline is about 0.05 deg, so scale by 0.4
+    lensB2 += q(0.4*(0.15*NS + 2.5*Math.max(0, catAge - 0.3)));
+    if(nsC > 0) lensB2 += q(fracB(0.002 + 0.008*nsC));
+    if(cat > 0){ let sc = cat < 0.15 ? fracB(0.005)*cat/0.15 : fracB(0.005 + 0.035*cat**1.5); if(cat > 0.9) sc = Math.max(sc, fracB(0.06)); lensB2 += q(sc); }
+    lensB2 += q(fracB(0.01)*lux);
+  }
+  if(on[4]) lensB2 += q(fracB(0.01)*uve);
+  // defocus: refraction, accommodation and object distance
+  const refr = P.refraction_D + (NSall > 0 ? -1.75*lerp(0.07, 0.30, NSall) : 0);
+  const need = 1/Math.max(S.dist, 0.05) + refr;
+  const err = need < 0 ? -need : (need > Amax ? need - Amax : 0);
+  const defocusDeg = 0.35*(pupil/1000)*err*57.2958;
+  if(on[6]){ opticsB2 += q(defocusDeg); if(closed) opticsB2 += q(10); }
+  if(on[9]){ retinaB2 += q(pra > 0.6 ? fracB(0.03)*(pra - 0.6)/0.4 : 0) + q(fracB(0.03)*micro); }
+  const devMult = on[6] ? (closed ? 1 : 1/Math.max(dev, 0.1)) : 1;
+  const cpdEff = V.cpd*lerp(1, 0.36, m); // scotopic acuity ~2-3.5 cpd (Lind 2017)
+  const acuDeg = on[6] ? 0.389/cpdEff : 0;
+
+  // ---- haze (additive, capped at 0.95)
+  const hz = []; // [amount, rgb]
+  if(on[3]){
+    hz.push([(brachy ? 0.1 : 0.03) + 0.03*Math.max(0, age - 6) + 0.2*kcs, [1, 0.98, 0.95]]);
+    hz.push([0.55*edema + 0.55*glS, [0.86, 0.93, 1]]);
+    hz.push([0.25*lipid, [1, 1, 1]]);
+    hz.push([0.2*pannus, [1, 0.85, 0.8]]);
+    hz.push([pkOrigin === 'diffuse' ? 0.35*pk : 0.12*pk, [0.85, 0.75, 0.65]]);
+  }
+  if(on[4]){ hz.push([0.45*uve, [1, 0.97, 0.9]]); hz.push([0.35*hyp, [1, 0.55, 0.5]]); }
+  let hAmt = 0, hCol = [0, 0, 0];
+  hz.forEach(([v, col]) => { if(v > 0){ hAmt += v; hCol = hCol.map((c, i) => c + v*col[i]); } });
+  hCol = hAmt > 0 ? hCol.map(c => c/hAmt) : [1, 1, 1];
+  hAmt = Math.min(0.95, hAmt);
+
+  // cataract spatial haze
+  const catType = ex('cataract', 'type', 'cortical');
+  const hyper = !!ex('cataract', 'hypermature', false);
+  const catH = on[5] && cat > 0 ? 0.05 + 0.85*cat**1.3 : 0;
+  const catC = on[5] && cat > 0 ? 0.9*cat : 0;
+  const catTypeId = catType === 'cortical' ? 1 : catType === 'diffuse' ? 0 : 2;
+  const catInner = clamp(lerp(0.8, 0, cat/0.7), 0, 0.8);
+
+  // ---- contrast and luminance multipliers
+  let contrast = 1, lum = 1, desat = 0;
+  if(on[5]) contrast *= (1 - 0.10*NS)*(1 - 0.5*catAge)*(1 - 0.15*nsC);
+  if(on[3]) { contrast *= (1 - (pkAx > 0 ? lerp(0.4, 0.9, pkAx) : 0))*(1 - 0.3*pannus)*(1 - 0.3*edema)*(1 - 0.25*glS); lum *= (1 - (pkAx > 0 ? lerp(0.3, 0.8, pkAx) : 0))*(1 - (pkOrigin === 'diffuse' ? 0.3 : 0.45)*pk*(1 - pkAx)); }
+  if(on[4]) { contrast *= (1 - 0.35*uve); lum *= (1 - 0.6*glS)*(1 - 0.35*horner)*(1 - 0.3*uve)*(1 - 0.3*hyp); desat += 0.2*uve; }
+  if(on[6]) contrast *= 0.3 + 0.7*(closed ? 0 : dev);
+  if(on[9]) {
+    contrast *= (1 - 0.7*glD)*(1 - (pra > 0.6 ? 0.6*(pra - 0.6)/0.4 : 0))*(1 - sards)*(1 - 0.5*on_);
+    lum *= (1 - 0.97*sards)*(1 - 0.3*on_)*(1 - 0.3*micro)*(1 - smooth(0.9, 1.0, pra))*(glD > 0.97 ? 0.05 : 1);
+    desat += 0.4*glD + 0.6*on_;
+  }
+  const sN = clamp(pra*2.5, 0, 1); // PRA: night loss saturates early
+  if(on[9]) desat += 0.5*sN*m;
+  desat = clamp(desat, 0, 1);
+
+  // ---- glare terms (multiply: pigment × lens × pupil × brachycephalic)
+  const glareLens = on[5] ? 0.15*NS + 1.0*catAge : 0;
+  const glareMult = (1 + 2*(1 - pig))*(1 + glareLens)*glarePupil*(brachy ? 1.2 : 1);
+  let bloom = 0;
+  if(on[5]) bloom += (cat > 0 ? 0.2 + 1.5*cat : 0) + 0.3*nsC + 0.3*glareLens;
+  if(on[3]) bloom += 0.6*kcs + 0.4*lipid + 0.4*edema + 0.5*glS;
+  if(on[4]) bloom += 1.0*ia;
+  if(on[9]) bloom += 0.4*pra;
+  bloom = on[10] ? Math.min(3, bloom*(1 + 2*(1 - pig))*Math.sqrt(glarePupil)*(brachy ? 1.2 : 1)) : 0;
+  const bloomDeg = cat > 0 ? lerp(frac(0.03), frac(0.15), cat) : 4;
+  const halo = on[3] ? Math.min(2, 0.8*edema + 0.8*glS) : 0;
+  const veil = on[10] ? V.veil*glareMult : 0;
+
+  // ---- ghost
+  let ghost = [0, 0, 0, 0];
+  if(on[5] && lux > 0) ghost = [0.4*lux, 1.5 + 2.5*lux, -(0.8 + 1.2*lux), 0.6];
+  else if(on[4] && ia > 0.2) ghost = [0.1*ia, 1.0, -0.4, 0.4];
+
+  // ---- occluders (field wedges in eye coords, +x temporal)
+  const occ = [];
+  if(on[3] && pk > 0 && pkOrigin !== 'diffuse'){
+    occ.push({kind:'pigment', dir: pkOrigin === 'medial' ? [1, 0] : [-1, 0], edge: lerp(70, -15, pk), soft:18, tint:[0.85, 0.75, 0.65], dens: 0.95*clamp(0.35 + 0.65*pk, 0, 1)});
+  }
+  if(on[3] && pannus > 0) occ.push({kind:'vascular', dir:[-1, 0], edge: lerp(70, -5, pannus), soft:18, tint:[0.92, 0.7, 0.66], dens: 0.85*clamp(0.3 + 0.7*pannus, 0, 1)});
+  if(on[4] && hyp > 0) occ.push({kind:'red', dir:[0, 1], edge: lerp(35, -25, hyp), soft:10, tint:[0.75, 0.22, 0.18], dens: 0.9*clamp(0.3 + 0.7*hyp, 0, 1)});
+  if(on[4] && uve > 0.5) occ.push({kind:'white', dir:[0, 1], edge: lerp(40, 8, (uve - 0.5)/0.5), soft:10, tint:[1, 0.97, 0.9], dens:0.6});
+
+  // ---- apertures (lids)
+  const bright = 0.4 + 0.6*(1 - m);
+  const sq = Math.max(0.4*kcs, 0.5*ulcer, 0.35*uve, 0.3*entro, 0.3*glS, 0.25*ia*(1 - m))*bright;
+  let lidTop = 0, lidBot = 0, third = 0, thirdTint = [0.95, 0.7, 0.7];
+  if(on[2]){
+    lidTop = sq*0.55 + 0.3*horner; lidBot = sq*0.45;
+    third = Math.max(0.35*horner, cherry > 0 ? 0.18 + 0.25*cherry : 0);
+    if(cherry > 0 && 0.18 + 0.25*cherry >= 0.35*horner) thirdTint = [0.95, 0.42, 0.42];
+    if(micro > 0) third = Math.max(third, 0.25*micro);
+  }
+
+  // ---- field masks
+  let tunnel = 180, tsoft = 10;
+  if(on[9]){
+    if(pra > 0){ const th = Math.max(6, 120*(1 - smooth(0.25, 0.9, pra))); if(th < tunnel){ tunnel = th; tsoft = lerp(15, 5, pra); } }
+    if(glD > 0){ const th = 65*(1 - 0.9*glD); if(th < tunnel){ tunnel = th; tsoft = 10; } }
+    if(micro > 0){ const th = lerp(120, 30, micro); if(th < tunnel){ tunnel = th; tsoft = 12; } }
+  }
+  const scot = [];
+  if(on[9]){
+    if(cea > 0){ scot.push([14, -2, 2 + 5*cea, 0.5 + 0.5*cea]); if(cea > 0.4) scot.push([20, -8, 1.5 + 3*cea, 0.7]); }
+    if(on_ > 0) scot.push([0, 0, 1.5 + 10*on_, 0.35 + 0.6*on_]);
+    if(micro > 0.25) scot.push([0, -16, 3 + 8*micro, 0.8]);
+    if(dys > 0.3) scot.push([-8, 6, 2 + 4*dys, 0.7]);
+  }
+  const arc = on[9] && glD > 0.2 ? (glD - 0.2)/0.8 : 0;
+  const streak = on[9] ? dys*0.9 : 0;
+  const rdDir = ex('retinal_detachment', 'dir_deg', 90)*Math.PI/180;
+  const curtain = on[9] && rd > 0 ? [Math.cos(rdDir), Math.sin(rdDir), lerp(90, -90, rd), 6] : [0, 0, 0, 0];
+  const resid = (sards > 0.9 || glD > 0.97 || pra > 0.98) ? 0.03 : 0.06;
+
+  // ---- distortion
+  const kcsOn = on[3] && kcs > 0;
+  const ulcerU = on[3] && ulcer > 0 ? [8, -4, 4 + 5*ulcer, ulcer] : [0, 0, 1, 0];
+
+  // ---- gain: human brightness at this light level, dog advantage from rods + tapetum, minus retinal ageing and disease
+  const humanB = 0.06 + 0.94*smooth(-3.5, 1.2, S.logL);
+  const ng = V.nightGain*(on[9] ? (1 - sN) : 1);
+  const night = on[10] ? lerp(1, Math.max(ng*(0.6 + 0.4*T)*Rs, 0), m) : 1;
+  const ret = on[10] ? lerp(Rp, 1, m) : 1;
+  const ev = on[4] ? (0.7*ia + 0.5*uve + 0.4*(1 - pig))*(1 - m) : 0;
+  let gain = Math.min(1, humanB*night)*ret*lum*2**ev;
+  if(closed && on[6]) gain *= 0.12;
+  const tint = [1, 1, 1];
+  if(on[5]){ const bg = (1 - 0.15*NS)*(1 - 0.1*nsC); tint[2] *= bg; }
+  if(closed && on[6]){ tint[0] *= 1; tint[1] *= 0.35; tint[2] *= 0.3; }
+  const noise = on[10] ? V.noise*Math.pow(m, 1.2)*0.12 + (on[9] ? 0.1*sN*m : 0) : 0;
+  const lower = on[10] ? V.lower*T*m : 0;
+
+  // ---- colour
+  const k = V.chroma;
+  const dm = on[7] ? dogMatrix(k) : [[1,0,0],[0,1,0],[0,0,1]];
+  const rowL = on[7] ? L_DOG : [0.2126, 0.7152, 0.0722];
+  const mU = on[7] ? m : 0;
+
+  // particles
+  let part = [0, 0];
+  if(on[11]){ if(ast > 0) part = [0.15 + 0.5*ast, 0]; else if(uve > 0.2) part = [0.08 + 0.3*uve, 1]; }
+  const sparkle = on[5] && hyper && cat > 0 ? 1 : (on[3] && lipid > 0 ? 0.35*lipid : 0);
+
+  const blurG = Math.sqrt(corneaB2 + lensB2 + opticsB2 + retinaB2);
+  const csf = on[8] ? V.csf*(1 + 1.5*m) : 0;
+
+  const anim = (kcsOn) || (on[5] && lux > 0) || part[0] > 0 || noise > 0.004 || sparkle > 0 || !!S.flicker;
+
+  const U = {
+    uAcu: acuDeg, uPeri: on[8] ? V.periph : 0, uTopo: [topoH, topoV], uBlurG: blurG, uDev: devMult,
+    uUlcer: ulcerU, uMucus: 0, uWarp: [0, 3, 0],
+    uHaze: [...hCol, hAmt], uCat: [catH, catC, catTypeId, catInner], uCatTint: catType === 'nuclear' ? [1.0, 0.96, 0.88] : [1, 0.99, 0.96], uSparkle: sparkle,
+    uContrast: contrast, uLocalDeg: 3,
+    uVeil: veil, uBloom: bloom, uBloomDeg: bloomDeg, uHalo: [halo, frac(0.06), frac(0.01), 1], uGhost: ghost,
+    uTint: tint, uDog: dm, uRowL: rowL, uRod: ROD, uM: mU, uDesat: desat, uCsf: csf,
+    uTunnel: [tunnel, tsoft], uScot: scot, uArc: arc, uStreak: streak, uCurtain: curtain, uResid: resid,
+    uLid: [lidTop, lidBot, 0, 0], uThird: third, uThirdTint: thirdTint, uNose: [noseW, on[1] && S.nose ? 1 : 0],
+    uGain: gain, uLower: lower, uNoise: noise, uPart: [part[0], part[1], 0],
+    uZone: [B/2, F/2], occ,
+  };
+  const kcsState = kcsOn ? {s:kcs, tbu: 20*(1 - kcs) + 1*kcs, interval: 6, sigmaMax: fracB(0.03)} : null;
+
+  const derived = {
+    a: +a.toFixed(3), streak_strength: +s.toFixed(2), skull: skullOf(P.ci), field_total_deg: Math.round(F), binocular_overlap_deg: Math.round(B),
+    nose_mask_width_deg: +noseW.toFixed(1), refraction_D: +refr.toFixed(2), accommodation_max_D: +Amax.toFixed(2),
+    nuclear_sclerosis: +NS.toFixed(2), age_lens_opacity: +catAge.toFixed(2), retina_gain_photopic: +Rp.toFixed(2), retina_gain_scotopic: +Rs.toFixed(2),
+    pigment: pig, tapetum: T, glare_multiplier: +glareMult.toFixed(2), pupil_mm: +pupil.toFixed(1), temporal_cutoff_Hz: Math.round(fc),
+    development: closed ? 'eyes closed' : +dev.toFixed(2), mesopic_rod_weight: +m.toFixed(2), acuity_cpd_centre: +(0.389/Math.max(Math.sqrt(q(acuDeg) + q(blurG))*devMult, 1e-4)).toFixed(1),
+    defocus_D: +err.toFixed(2),
+  };
+
+  // Shader parameters in the shape of Part III §8 (3). Fractions are of a 120° reference image.
+  const shader = {
+    reference_fov_deg: {blur: REF_BLUR, geometry: REF_FOV},
+    baseline: {dichromat: !!on[7], chroma_k: k, acuity_sigma_frac: +(acuDeg/REF_BLUR).toFixed(5), night_gain: +V.nightGain.toFixed(2)},
+    field_mask: {tunnel_r_in: +Math.min(1, tunnel/REF_FOV).toFixed(3), edge_soft: +(tsoft/REF_FOV).toFixed(3),
+      scotomas: scot.map(([x, y, r, d]) => ({x:+(x/REF_FOV).toFixed(3), y:+(y/REF_FOV).toFixed(3), radius:+(r/REF_FOV).toFixed(3), depth:+d.toFixed(2), shape:'disc'})),
+      arcuate: +arc.toFixed(2), streaks: +streak.toFixed(2),
+      curtain: rd > 0 ? {dir_deg: ex('retinal_detachment', 'dir_deg', 90), fraction: +rd.toFixed(2)} : null},
+    night: {gain_mult: +(ng/V.nightGain || 0).toFixed(2), noise_sigma: +noise.toFixed(3), desat: +(0.5*sN*m).toFixed(2)},
+    global: {lum_mult: +lum.toFixed(3), contrast_mult: +contrast.toFixed(3), saturation_mult: +(1 - desat).toFixed(2), tint_rgb: tint.map(v => +v.toFixed(3))},
+    haze: {amount: +hAmt.toFixed(3), color: hCol.map(v => +v.toFixed(3)), cataract: catH > 0 ? {amount: +catH.toFixed(3), contrast_loss: +catC.toFixed(2), spatial_mask: catTypeId === 1 ? 'spokes' : catTypeId === 2 ? 'central' : 'uniform'} : null},
+    blur: {sigma_frac: +(blurG/REF_BLUR).toFixed(4), spatial_mask: 'topography', topography: {sigma_h_deg: +topoH.toFixed(1), sigma_v_deg: +topoV.toFixed(1), peripheral_gain: on[8] ? V.periph : 0}, defocus_D: +err.toFixed(2)},
+    bloom: {intensity: +bloom.toFixed(2), radius_frac: +(bloomDeg/REF_FOV).toFixed(3), threshold: 0.8, veiling: +veil.toFixed(3)},
+    halos: {intensity: +halo.toFixed(2), radius_frac: 0.06, width_frac: 0.01, chromatic: true},
+    occluders: occ.map(o => ({kind:o.kind, field_wedge:{dir_deg: Math.round(Math.atan2(o.dir[1], o.dir[0])*180/Math.PI), edge_deg: +o.edge.toFixed(1), soft_deg:o.soft}, transmission: +(1 - o.dens).toFixed(2), tint_rgb:o.tint})),
+    distortion: {amp_frac: kcsOn ? +(0.015*kcs).toFixed(4) : 0, freq: 3, time_varying: kcsOn},
+    ghost: {alpha: +ghost[0].toFixed(2), offset_frac: [+(ghost[1]/REF_FOV).toFixed(3), +(ghost[2]/REF_FOV).toFixed(3)], blur_frac: +(ghost[3]/REF_BLUR).toFixed(4), wobble_hz: lux > 0 ? 3 : 0},
+    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: 6, sigma_max_frac: +(0.03*kcs).toFixed(3), mucus_alpha: +(0.35*kcs).toFixed(2)} : {enabled:false},
+    aperture: {top: +lidTop.toFixed(2), bottom: +lidBot.toFixed(2), nasal_inferior: +third.toFixed(2), bright_squint: +sq.toFixed(2)},
+    particles: {count: Math.round(part[0]*200), kind: part[0] > 0 ? (part[1] > 0.5 ? 'floater' : 'asteroid') : null, settle_s: 2.0},
+    photophobia: {exposure_ev_bright: +ev.toFixed(2)},
+  };
+  return {derived, shader, U, anim, kcsState, lux: on[5] ? lux : 0, m, cpdEff, rodTau: V.rodTau, fc};
+}
+
+function profileJSON(state, comp){
+  const P = state.profile;
+  return {
+    profile: {skull: skullOf(P.ci), cephalic_index: P.ci, breed: P.breed, coat: P.coat, iris: {[P.eye]: P.iris}, eye: P.eye,
+      age_years: +P.age_years.toFixed(2), lifespan_years: P.lifespan_years, refraction_D: P.refraction_D, tapetum: P.tapetum,
+      conditions: condHypotheses(state).conditions},
+    derived: comp.derived,
+  };
+}
+function condHypotheses(state){
+  const out = {};
+  for(const c of CONDS){
+    const st = state.conditions[c.id]; if(!st || !st.on) continue;
+    const o = {s: +st.s.toFixed(2)};
+    if(c.id === 'cataract'){ o.stage = catStage(st.s, st.x.hypermature); o.type = st.x.type || 'cortical'; }
+    if(c.id === 'glaucoma'){ o.damage = +(st.x.damage ?? 0.4).toFixed(2); o.acute = st.s > 0.5; }
+    if(c.id === 'pigmentary_keratitis'){ o.origin = st.x.origin || 'medial'; o.maini_score_est = +(st.s*14).toFixed(1); }
+    if(c.id === 'kcs') o.chronic = !!st.x.chronic;
+    if(c.id === 'retinal_detachment') o.dir_deg = st.x.dir_deg ?? 90;
+    o.source = st.source || 'manual';
+    out[c.id] = o;
+  }
+  return {conditions: out, disclaimer: 'Not a veterinary diagnosis. Retinal disease, glaucoma (IOP) and tear production cannot be measured from a photo.'};
+}
+
+// Detector output (schema 0.1) -> condition hypotheses. s = p * severity unless stated.
+function mapDetector(det){
+  const f = det.findings || {}, md = det.metadata_optional || {};
+  const conds = {}; const notes = [];
+  const ps = (o, d = 0.5) => o ? clamp((o.p ?? 0)*(o.severity ?? d), 0, 1) : 0;
+  const put = (id, s, extra = {}) => { if(s > 0.02) conds[id] = Object.assign({s: +s.toFixed(2), source:'photo'}, extra); };
+  if(f.lens_opacity){ const pat = f.lens_opacity.pattern; put('cataract', ps(f.lens_opacity), {type: ['cortical','nuclear','diffuse','posterior_subcapsular'].includes(pat) ? pat : 'cortical'}); }
+  put('nuclear_sclerosis', ps(f.nuclear_haze_reflex_passes, 0.3));
+  if(f.aphakic_crescent && f.aphakic_crescent.p > 0.5) put('lens_luxation', 0.6*f.aphakic_crescent.p);
+  if(f.corneal_pigment){ const cp = f.corneal_pigment; const score = (cp.clock_hours || 0) + (cp.reaches_pupil ? 1 : 0) + (cp.crosses_pupil ? 2 : 0); put('pigmentary_keratitis', (cp.p ?? 1)*clamp(score/14, 0, 1), {origin: cp.origin || 'medial', maini_score_est: +score.toFixed(1)}); }
+  put('corneal_edema', ps(f.corneal_edema));
+  put('pannus', ps(f.corneal_vascularization));
+  put('lipid_dystrophy', ps(f.corneal_white_crystalline));
+  if(f.corneal_ulcer_visible){ const dmap = {superficial:0.3, deep:0.6, descemetocele:0.85}; put('corneal_ulcer', (f.corneal_ulcer_visible.p ?? 0)*(dmap[f.corneal_ulcer_visible.depth] || 0)); }
+  let kcs = Math.max(ps(f.tear_film_irregular), 0.8*ps(f.mucoid_discharge));
+  if(typeof md.STT_mm_per_min === 'number'){ kcs = clamp((15 - md.STT_mm_per_min)/15, 0, 1); }
+  if(kcs > 0.02) conds.kcs = {s: +kcs.toFixed(2), chronic: (f.corneal_pigment?.p || 0) > 0.5 || (f.corneal_vascularization?.p || 0) > 0.5, source: typeof md.STT_mm_per_min === 'number' ? 'metadata:STT=' + md.STT_mm_per_min : 'photo'};
+  if(f.hypopyon_or_hyphema){ const h = f.hypopyon_or_hyphema; if(h.type === 'hyphema') put('hyphema', (h.p ?? 0)*clamp(h.fill_fraction*2 || 0.5, 0, 1)); if(h.type === 'hypopyon') put('uveitis', (h.p ?? 0)*0.7); }
+  if(f.conjunctival_hyperemia && f.conjunctival_hyperemia.pattern === 'ciliary_flush' && f.pupil && f.pupil.diameter_rel < 0.4) put('uveitis', Math.max(conds.uveitis?.s || 0, ps(f.conjunctival_hyperemia)));
+  if(f.iris_atrophy) put('iris_atrophy', (f.iris_atrophy.p ?? 0)*0.7);
+  put('cherry_eye', (f.third_eyelid_gland_prolapse?.p || 0)*0.7);
+  const hornerP = Math.min(f.ptosis?.p || 0, f.third_eyelid_protrusion?.p || 0); put('horner', hornerP*0.7);
+  if(f.entropion) put('entropion', (f.entropion.p ?? 0)*0.6);
+  put('microphthalmia', (f.microphthalmia_coloboma?.p || 0)*0.6);
+  let glS = 0, glD = 0;
+  if(typeof md.IOP_mmHg === 'number'){ glS = clamp((md.IOP_mmHg - 20)/40, 0, 1); }
+  else if((f.conjunctival_hyperemia?.pattern === 'episcleral') && (f.pupil?.diameter_rel || 0) > 0.8 && (f.corneal_edema?.p || 0) > 0.5){ glS = 0.5; notes.push('Possible glaucoma signs: pressure needs tonometry.'); }
+  if((f.globe_enlarged?.p || 0) > 0.5){ glD = Math.max(glD, 0.7); glS = Math.max(glS, 0.3); }
+  if(glS > 0 || glD > 0) conds.glaucoma = {s: +glS.toFixed(2), damage: +glD.toFixed(2), acute: glS > 0.5, source: typeof md.IOP_mmHg === 'number' ? 'metadata:IOP' : 'photo'};
+  // vet-entered diagnoses for what a photo cannot see
+  const dx = (md.vet_diagnoses || []).map(s => String(s).toLowerCase());
+  const dxMap = {pra:'pra', 'prcd-pra':'pra', sards:'sards', cea:'cea', 'collie eye anomaly':'cea', kcs:'kcs', 'dry eye':'kcs', glaucoma:'glaucoma', 'optic neuritis':'optic_neuritis', 'retinal dysplasia':'retinal_dysplasia', 'retinal detachment':'retinal_detachment'};
+  dx.forEach(d => { const id = dxMap[d]; if(id && !conds[id]) conds[id] = {s: 0.5, source:'metadata:vet'}; });
+  if(md.PRA_genotype && /affected/i.test(md.PRA_genotype) && !conds.pra) conds.pra = {s:0.3, source:'metadata:genotype'};
+  if(md.sudden_blindness && !conds.sards) notes.push('Sudden blindness reported: see a vet urgently.');
+  const urgent = [...(det.urgent_flags || [])];
+  if((f.conjunctival_hyperemia?.p || 0) > 0.5 && (f.corneal_edema?.p || 0) > 0.5 && (f.pupil?.diameter_rel || 0) > 0.8) urgent.push('red_eye+cloudy_cornea+dilated_pupil');
+  if((f.corneal_ulcer_visible?.depth === 'descemetocele') && (f.corneal_ulcer_visible?.p || 0) > 0.5) urgent.push('possible_descemetocele');
+  if(md.sudden_blindness) urgent.push('sudden_blindness');
+  return {conditions: conds, urgent, notes, metadata: md};
+}
+
+const EXAMPLE_DETECTOR = {
+  schema_version: '0.1', eye: 'OD',
+  image_quality: {usable:true, focus:0.82, glare_fraction:0.04, pupil_visible:true, flash_retroillumination:true, both_eyes_in_frame:false},
+  findings: {
+    lens_opacity: {p:0.9, severity:0.6, pattern:'cortical', tapetal_reflex_blocked_fraction:0.55},
+    nuclear_haze_reflex_passes: {p:0.2, severity:0.3},
+    aphakic_crescent: {p:0.0, direction_deg:null},
+    corneal_pigment: {p:0.8, clock_hours:4.5, reaches_pupil:false, crosses_pupil:false, origin:'medial'},
+    corneal_edema: {p:0.1, severity:0.0, region:'diffuse'},
+    corneal_vascularization: {p:0.3, severity:0.2, origin:'temporal'},
+    corneal_white_crystalline: {p:0.0, severity:0.0},
+    corneal_ulcer_visible: {p:0.05, depth:'none'},
+    tear_film_irregular: {p:0.4, severity:0.4},
+    mucoid_discharge: {p:0.6, severity:0.5},
+    conjunctival_hyperemia: {p:0.5, severity:0.4, pattern:'superficial'},
+    pupil: {diameter_rel:0.7, anisocoria:false, shape_irregular:false},
+    globe_enlarged: {p:0.0}, hypopyon_or_hyphema: {p:0.0, type:'none', fill_fraction:0.0},
+    iris_cyst: {p:0.0, count:0}, iris_atrophy: {p:0.1}, ppm_strands: {p:0.0},
+    third_eyelid_gland_prolapse: {p:0.0}, third_eyelid_protrusion: {p:0.0}, ptosis: {p:0.0},
+    entropion: {p:0.3, location:'medial_lower'}, ectropion: {p:0.0}, tear_staining: {p:0.7, severity:0.6},
+    eyelid_mass: {p:0.0}, microphthalmia_coloboma: {p:0.0}, tapetal_reflex_hyperreflective: {p:0.1},
+  },
+  metadata_optional: {age_years:9, breed:'pug', diabetic:false, night_blindness_reported:false, sudden_blindness:false, vet_diagnoses:['KCS'], STT_mm_per_min:8, IOP_mmHg:null, PRA_genotype:null},
+  urgent_flags: [],
+};
+// ---------- Procedural sample scenes (no external images allowed) ----------
+function rng(seed){ let s = seed >>> 0; return () => { s = (s*1664525 + 1013904223) >>> 0; return s/4294967296; }; }
+function mk(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function ball(ctx, x, y, r, base, hi, shade){
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(x + r*0.25, y + r*0.92, r*1.05, r*0.28, 0, 0, 7); ctx.fill();
+  const g = ctx.createRadialGradient(x - r*0.4, y - r*0.45, r*0.1, x, y, r*1.05);
+  g.addColorStop(0, hi); g.addColorStop(0.45, base); g.addColorStop(1, shade);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.restore();
+}
+
+function sceneYard(){
+  const W = 1600, H = 1000, c = mk(W, H), x = c.getContext('2d'), R = rng(7);
+  const sky = x.createLinearGradient(0, 0, 0, 470); sky.addColorStop(0, '#4f8fdc'); sky.addColorStop(1, '#cfe2f4');
+  x.fillStyle = sky; x.fillRect(0, 0, W, 480);
+  x.fillStyle = 'rgba(255,255,255,0.85)';
+  [[260,120,110,34],[340,100,80,30],[980,90,130,36],[1080,115,90,28],[1400,170,100,26]].forEach(([a,b,rx,ry]) => { x.beginPath(); x.ellipse(a, b, rx, ry, 0, 0, 7); x.fill(); });
+  // tree line
+  for(let i = 0; i < 160; i++){
+    const tx = R()*W, ty = 330 + R()*120, r = 26 + R()*60;
+    const g = Math.floor(70 + R()*60), rC = Math.floor(30 + R()*35);
+    x.fillStyle = `rgb(${rC},${g},${Math.floor(25 + R()*30)})`; x.beginPath(); x.arc(tx, ty, r, 0, 7); x.fill();
+  }
+  x.fillStyle = '#3d5d2c'; x.fillRect(0, 440, W, 40);
+  // lawn
+  const lawn = x.createLinearGradient(0, 470, 0, H); lawn.addColorStop(0, '#6aa040'); lawn.addColorStop(1, '#3a7426');
+  x.fillStyle = lawn; x.fillRect(0, 470, W, H - 470);
+  for(let i = 0; i < 26000; i++){
+    const gy = 475 + Math.pow(R(), 0.8)*(H - 475), depth = (gy - 470)/(H - 470);
+    const gx = R()*W, len = 3 + depth*16, lean = (R() - 0.5)*depth*8;
+    const v = R(); x.strokeStyle = v < 0.33 ? '#2f6a1f' : v < 0.66 ? '#5c9a34' : '#86b94e';
+    x.lineWidth = 0.6 + depth*1.6; x.beginPath(); x.moveTo(gx, gy); x.lineTo(gx + lean, gy - len); x.stroke();
+  }
+  // fence
+  for(let fx = -10; fx < W; fx += 46){
+    x.fillStyle = '#f2efe8'; x.beginPath(); x.moveTo(fx, 540); x.lineTo(fx, 425); x.lineTo(fx + 15, 405); x.lineTo(fx + 30, 425); x.lineTo(fx + 30, 540); x.fill();
+    x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(fx + 22, 425, 8, 115);
+  }
+  x.fillStyle = '#e7e3d9'; x.fillRect(0, 440, W, 12); x.fillRect(0, 505, W, 12);
+  // flower bed
+  const fcols = ['#d7263d', '#f46036', '#e8c547', '#9b5de5', '#ff70a6', '#ffffff', '#2e86ff'];
+  for(let i = 0; i < 260; i++){
+    const fx = R()*W, fy = 520 + R()*48, r = 4 + R()*6;
+    x.fillStyle = '#2e5a1e'; x.fillRect(fx - 1, fy, 2, 18);
+    x.fillStyle = fcols[Math.floor(R()*fcols.length)]; x.beginPath(); x.arc(fx, fy, r, 0, 7); x.fill();
+  }
+  // toys
+  ball(x, 520, 770, 58, '#d81e1e', '#ff8a7a', '#6a0a0a');
+  ball(x, 1090, 700, 44, '#1f5fe0', '#9cc0ff', '#0b2a70');
+  ball(x, 820, 845, 32, '#d9e021', '#f6ffb0', '#7a7d00');
+  x.strokeStyle = '#f7f7f2'; x.lineWidth = 3; x.beginPath(); x.arc(806, 835, 26, -0.6, 1.1); x.stroke(); x.beginPath(); x.arc(840, 857, 26, 2.6, 4.2); x.stroke();
+  x.save(); x.translate(1300, 860); x.rotate(-0.15);
+  x.fillStyle = 'rgba(0,0,0,0.25)'; x.beginPath(); x.ellipse(10, 18, 92, 22, 0, 0, 7); x.fill();
+  const fg = x.createLinearGradient(0, -30, 0, 30); fg.addColorStop(0, '#ff9a3c'); fg.addColorStop(1, '#c4520c');
+  x.fillStyle = fg; x.beginPath(); x.ellipse(0, 0, 90, 26, 0, 0, 7); x.fill();
+  x.strokeStyle = '#ffd2a3'; x.lineWidth = 3; x.beginPath(); x.ellipse(0, -2, 62, 16, 0, 0, 7); x.stroke(); x.restore();
+  // striped tug rope
+  x.save(); x.translate(300, 900); x.rotate(0.35);
+  for(let i = 0; i < 9; i++){ x.fillStyle = i % 2 ? '#1c4fd8' : '#e0262b'; x.fillRect(-120 + i*26, -13, 26, 26); }
+  x.fillStyle = '#e0262b'; x.beginPath(); x.arc(-128, 0, 20, 0, 7); x.arc(122, 0, 20, 0, 7); x.fill(); x.restore();
+  // green ball on green grass (hard for anyone) and a teal ring near the dog neutral point
+  ball(x, 1460, 760, 30, '#3a9a2a', '#a6e07e', '#16400e');
+  x.strokeStyle = '#00d0c0'; x.lineWidth = 12; x.beginPath(); x.ellipse(700, 640, 46, 18, 0, 0, 7); x.stroke();
+  return {canvas: c, name: 'Backyard', hfov: 50, dist: 6, logL: 2.8};
+}
+
+function sceneStreet(){
+  const W = 1600, H = 1000, c = mk(W, H), x = c.getContext('2d'), R = rng(11);
+  const sky = x.createLinearGradient(0, 0, 0, 620); sky.addColorStop(0, '#060a18'); sky.addColorStop(1, '#1d2546');
+  x.fillStyle = sky; x.fillRect(0, 0, W, 640);
+  for(let i = 0; i < 220; i++){ const a = R()*0.8; x.fillStyle = `rgba(255,255,255,${a})`; x.fillRect(R()*W, R()*360, 1.6, 1.6); }
+  const moon = x.createRadialGradient(1330, 130, 0, 1330, 130, 120); moon.addColorStop(0, 'rgba(255,250,230,1)'); moon.addColorStop(0.28, 'rgba(255,248,225,1)'); moon.addColorStop(0.32, 'rgba(160,170,210,0.25)'); moon.addColorStop(1, 'rgba(60,70,120,0)');
+  x.fillStyle = moon; x.beginPath(); x.arc(1330, 130, 120, 0, 7); x.fill();
+  // buildings
+  let bx = -20;
+  while(bx < W){
+    const bw = 140 + R()*170, bh = 260 + R()*300, top = 640 - bh;
+    x.fillStyle = `rgb(${12 + R()*10|0},${14 + R()*10|0},${22 + R()*12|0})`; x.fillRect(bx, top, bw, bh);
+    for(let wy = top + 24; wy < 600; wy += 42) for(let wx = bx + 16; wx < bx + bw - 26; wx += 34){
+      const v = R(); if(v < 0.32){ x.fillStyle = v < 0.05 ? '#8fb6ff' : v < 0.1 ? '#ffe2b0' : '#ffbf5e'; x.fillRect(wx, wy, 18, 24); }
+    }
+    bx += bw + 6;
+  }
+  // road and pavement
+  x.fillStyle = '#1a1b20'; x.fillRect(0, 640, W, 60);
+  const road = x.createLinearGradient(0, 700, 0, H); road.addColorStop(0, '#16171c'); road.addColorStop(1, '#0d0e11');
+  x.fillStyle = road; x.fillRect(0, 700, W, H - 700);
+  x.fillStyle = '#6d6a58'; for(let lx = 20; lx < W; lx += 160){ x.beginPath(); x.moveTo(lx, 850); x.lineTo(lx + 90, 850); x.lineTo(lx + 96, 862); x.lineTo(lx + 6, 862); x.fill(); }
+  // street lamps with light pools
+  [[220, 0.9], [720, 1], [1220, 0.95]].forEach(([lx, k]) => {
+    const pool = x.createRadialGradient(lx, 760, 10, lx, 760, 300); pool.addColorStop(0, `rgba(255,196,110,${0.35*k})`); pool.addColorStop(1, 'rgba(255,196,110,0)');
+    x.fillStyle = pool; x.beginPath(); x.ellipse(lx, 760, 300, 90, 0, 0, 7); x.fill();
+    x.fillStyle = '#262a33'; x.fillRect(lx - 5, 380, 10, 330); x.fillRect(lx - 5, 380, 60, 8);
+    const glow = x.createRadialGradient(lx + 52, 396, 0, lx + 52, 396, 70); glow.addColorStop(0, 'rgba(255,240,200,1)'); glow.addColorStop(0.18, 'rgba(255,225,160,0.9)'); glow.addColorStop(1, 'rgba(255,200,120,0)');
+    x.fillStyle = glow; x.beginPath(); x.arc(lx + 52, 396, 70, 0, 7); x.fill();
+    x.fillStyle = '#fffbea'; x.beginPath(); x.ellipse(lx + 52, 394, 14, 8, 0, 0, 7); x.fill();
+  });
+  // car
+  x.fillStyle = '#4a1012'; x.beginPath(); x.moveTo(820, 800); x.lineTo(850, 735); x.lineTo(1060, 730); x.lineTo(1120, 780); x.lineTo(1160, 790); x.lineTo(1160, 830); x.lineTo(820, 830); x.fill();
+  x.fillStyle = '#0d1016'; x.beginPath(); x.moveTo(865, 742); x.lineTo(1050, 738); x.lineTo(1095, 778); x.lineTo(860, 782); x.fill();
+  x.fillStyle = '#050507'; x.beginPath(); x.arc(890, 832, 28, 0, 7); x.arc(1100, 832, 28, 0, 7); x.fill();
+  const hl = x.createRadialGradient(1150, 800, 0, 1150, 800, 40); hl.addColorStop(0, '#ffffff'); hl.addColorStop(0.35, 'rgba(255,255,240,0.9)'); hl.addColorStop(1, 'rgba(255,255,240,0)');
+  x.fillStyle = hl; x.beginPath(); x.arc(1150, 800, 40, 0, 7); x.fill();
+  x.fillStyle = '#ff2a2a'; x.fillRect(822, 790, 14, 16);
+  // traffic light and street sign
+  x.fillStyle = '#20232a'; x.fillRect(1440, 470, 10, 240); x.fillRect(1418, 420, 54, 120);
+  x.fillStyle = '#2a0c0c'; x.beginPath(); x.arc(1445, 442, 14, 0, 7); x.fill();
+  x.fillStyle = '#2a250c'; x.beginPath(); x.arc(1445, 480, 14, 0, 7); x.fill();
+  x.fillStyle = '#4dffb0'; x.beginPath(); x.arc(1445, 518, 14, 0, 7); x.fill();
+  x.fillStyle = '#1b6b3a'; x.fillRect(470, 520, 170, 46); x.fillStyle = '#e8efe9'; x.font = 'bold 28px sans-serif'; x.fillText('ELM ST', 502, 554);
+  x.fillStyle = '#262a33'; x.fillRect(552, 566, 7, 140);
+  // hedge with a cat's eyeshine
+  x.fillStyle = '#0b130d'; for(let i = 0; i < 40; i++){ x.beginPath(); x.arc(20 + i*12, 690 + Math.sin(i)*6, 26, 0, 7); x.fill(); }
+  x.fillStyle = '#b6ff6a'; x.beginPath(); x.arc(300, 676, 3.2, 0, 7); x.arc(316, 676, 3.2, 0, 7); x.fill();
+  return {canvas: c, name: 'Night street', hfov: 60, dist: 15, logL: -0.8};
+}
+
+function sceneChart(){
+  const W = 1600, H = 1000, c = mk(W, H), x = c.getContext('2d');
+  const hfov = 12, ppd = W/hfov; // 133 px per degree
+  x.fillStyle = '#f4f4f1'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#222'; x.font = '600 30px sans-serif'; x.fillText('Vision chart', 60, 66);
+  x.font = '22px sans-serif'; x.fillStyle = '#555'; x.fillText('Viewed from 3 m, the chart spans 12°. Dogs average 20/75.', 260, 66);
+  // colour swatches (linear sRGB values converted with the exact transfer curve)
+  const sw = [['Red', [0.85,0.03,0.03]], ['Orange', [0.9,0.3,0.02]], ['Yellow', [0.9,0.8,0.02]], ['Green', [0.03,0.55,0.05]], ['Neutral 480 nm', [0, 0.62, 0.5]], ['Blue', [0.02,0.08,0.8]], ['Violet', [0.35,0.05,0.7]], ['Grey', [0.38,0.38,0.38]]];
+  const enc = v => Math.round(255*(v <= 0.0031308 ? 12.92*v : 1.055*Math.pow(v, 1/2.4) - 0.055));
+  sw.forEach(([n, v], i) => {
+    const sx = 60 + i*188;
+    x.fillStyle = `rgb(${enc(v[0])},${enc(v[1])},${enc(v[2])})`; x.fillRect(sx, 100, 168, 150);
+    x.fillStyle = '#333'; x.font = '19px sans-serif'; x.fillText(n, sx, 278);
+  });
+  // gratings at known spatial frequency for this viewing geometry
+  const cps = [1, 2, 4, 8, 16], gw = 250, gy = 320;
+  const img = x.getImageData(0, 0, W, H), d = img.data;
+  cps.forEach((cpd, i) => {
+    const gx = 60 + i*300, period = ppd/cpd;
+    for(let yy = gy; yy < gy + gw; yy++) for(let xx = gx; xx < gx + gw; xx++){
+      const lin = 0.5 + 0.48*Math.sin(2*Math.PI*(xx - gx)/period);
+      const e = enc(lin), k = (yy*W + xx)*4; d[k] = d[k+1] = d[k+2] = e; d[k+3] = 255;
+    }
+  });
+  x.putImageData(img, 0, 0);
+  x.fillStyle = '#333'; x.font = '19px sans-serif';
+  cps.forEach((cpd, i) => x.fillText(cpd + ' cycles per degree', 60 + i*300, gy + gw + 28));
+  // tumbling E rows: a 20/20 letter subtends 5 arcmin
+  const rows = [['20/200', 200], ['20/100', 100], ['20/75', 75], ['20/50', 50], ['20/30', 30], ['20/20', 20]];
+  let ex = 60; const baseY = 960; const dirs = [0, 1, 2, 3, 1, 0, 3, 2];
+  rows.forEach(([lab, den], ri) => {
+    const hPx = (5/60)*(den/20)*ppd; // letter height in px
+    for(let j = 0; j < (ri < 2 ? 1 : ri < 4 ? 2 : 3); j++){
+      const cx = ex + hPx/2, cy = baseY - 40 - hPx/2;
+      x.save(); x.translate(cx, cy); x.rotate(dirs[(ri + j) % 8]*Math.PI/2);
+      const u = hPx/5; x.fillStyle = '#111';
+      x.fillRect(-2.5*u, -2.5*u, u, 5*u); x.fillRect(-2.5*u, -2.5*u, 5*u, u); x.fillRect(-2.5*u, -0.5*u, 5*u, u); x.fillRect(-2.5*u, 1.5*u, 5*u, u);
+      x.restore(); ex += hPx*1.5;
+    }
+    x.fillStyle = ri === 2 ? '#1c3fd0' : '#555'; x.font = (ri === 2 ? '600 ' : '') + '19px sans-serif';
+    x.fillText(lab, ex - hPx*1.5*(ri < 2 ? 1 : ri < 4 ? 2 : 3) + 0, baseY);
+    ex += 40;
+  });
+  return {canvas: c, name: 'Vision chart', hfov, dist: 3, logL: 2.0};
+}
+const SAMPLES = {yard: sceneYard, street: sceneStreet, chart: sceneChart};
+// Where the standalone (camera-capable) build is served. Filled in once hosting is set up.
+const HOSTED_URL = 'https://raulk.github.io/doggo-vision/';
+// ---------- State ----------
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+function freshConditions(){ const o = {}; CONDS.forEach(c => { o[c.id] = {on:false, s:c.s, x:{}}; (c.extras || []).forEach(e => { o[c.id].x[e.k] = e.t === 'bool' ? false : e.t === 'sel' ? e.opts[0][0] : e.def; }); }); return o; }
+function breedProfile(id, age){ const b = BREEDS[id]; return {breed:id, age_years:age, lifespan_years:b.L, ci:b.ci, coat:'normal', iris:'brown', eye:'OD', tapetum:b.tap, refraction_D:b.dD}; }
+const state = {
+  profile: breedProfile('labrador', 4),
+  conditions: freshConditions(),
+  vision: {...VISION_DEFAULTS},
+  scene: {logL:2.8, hfov:50, dist:6, nose:false, live:true, flicker:false},
+  stages: STAGES.map(() => true),
+  view: {mode:0, split:0.5, zoom:1, cx:0.5, cy:0.5, overlay:0},
+  preset: 'lab',
+};
+
+const PRESETS = [
+  {id:'puppy3', name:'Puppy, 3 weeks', note:'Eyes just open, retina maturing', p:['labrador', 3/52]},
+  {id:'puppy10', name:'Puppy, 10 weeks', note:'Near-adult optics', p:['labrador', 10/52]},
+  {id:'lab', name:'Adult Labrador', note:'Baseline: dichromat, 20/75', p:['labrador', 4]},
+  {id:'greyhound', name:'Greyhound', note:'Strong visual streak, 270° field', p:['greyhound', 4]},
+  {id:'pug', name:'Pug', note:'Area centralis, glare, mild pigment', p:['pug', 4], c:{pigmentary_keratitis:{s:0.3, x:{origin:'medial'}}}},
+  {id:'gsd', name:'Myopic German shepherd', note:'About −1.5 D at distance', p:['gsd', 5], prof:{refraction_D:-1.5}},
+  {id:'senior', name:'Senior, 11 years', note:'Lens scatter, slower night vision', p:['mixed', 11], prof:{lifespan_years:12.5}},
+  {id:'cataract', name:'Cataract, immature', note:'Toy poodle, cortical spokes', p:['poodle_toy', 9], c:{cataract:{s:0.55, x:{type:'cortical'}}}},
+  {id:'diabetic', name:'Diabetic cataract', note:'Mature, fast onset', p:['labrador', 8], c:{cataract:{s:0.93, x:{type:'diffuse'}}}},
+  {id:'merle', name:'Double merle', note:'Small eye, colobomas, no tapetum', p:['aussie', 3], prof:{coat:'merle_MM', iris:'blue', tapetum:0}, c:{microphthalmia:{s:0.45}}},
+  {id:'pra', name:'PRA, mid stage', note:'Night loss, closing tunnel', p:['cocker', 7], c:{pra:{s:0.55}}},
+  {id:'glaucoma', name:'Glaucoma', note:'Halos now, field loss after', p:['cocker', 8], c:{glaucoma:{s:0.45, x:{damage:0.55}}}},
+  {id:'kcs', name:'Dry eye, Shih Tzu', note:'Tear film breaks up between blinks', p:['shihtzu', 8], c:{kcs:{s:0.6, x:{chronic:true}}}},
+  {id:'brachy', name:'Brachycephalic senior', note:'French bulldog, 9 years', p:['frenchie', 9], c:{pigmentary_keratitis:{s:0.45, x:{origin:'medial'}}, entropion:{s:0.4}}},
+];
+
+function applyPreset(pr){
+  state.profile = Object.assign(breedProfile(pr.p[0], pr.p[1]), pr.prof || {});
+  state.conditions = freshConditions();
+  Object.entries(pr.c || {}).forEach(([id, v]) => { const c = state.conditions[id]; c.on = true; c.s = v.s; Object.assign(c.x, v.x || {}); c.source = 'preset'; });
+  state.preset = pr.id;
+  syncAll(); invalidate();
+}
+
+// ---------- WebGL engine ----------
+const canvas = $('#gl');
+const gl = canvas.getContext('webgl2', {antialias:false, premultipliedAlpha:false, preserveDrawingBuffer:false, alpha:false});
+let engineOK = !!gl;
+let floatRT = false, AS = 1;
+const progs = {};
+function compileProg(fs, label){
+  const mkS = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(label + ': ' + gl.getShaderInfoLog(s)); return s; };
+  const p = gl.createProgram(); gl.attachShader(p, mkS(gl.VERTEX_SHADER, VS)); gl.attachShader(p, mkS(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'aPos'); gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(label + ': ' + gl.getProgramInfoLog(p));
+  const locs = {};
+  p.loc = n => (n in locs) ? locs[n] : (locs[n] = gl.getUniformLocation(p, n));
+  return p;
+}
+function setU(p, name, v){
+  const l = p.loc(name); if(l === null) return;
+  if(typeof v === 'number') gl.uniform1f(l, v);
+  else if(v.length === 2) gl.uniform2fv(l, v);
+  else if(v.length === 3) gl.uniform3fv(l, v);
+  else if(v.length === 4) gl.uniform4fv(l, v);
+}
+function setI(p, name, v){ const l = p.loc(name); if(l !== null) gl.uniform1i(l, v); }
+
+let quad, fbo, srcTex, pyr, levels = 1, dogTex, hist = [], histIdx = 0, W = 0, H = 0;
+function initGL(){
+  floatRT = !!gl.getExtension('EXT_color_buffer_float');
+  AS = floatRT ? 1 : 4;
+  progs.lin = compileProg(FS_LINEARIZE, 'linearize');
+  progs.down = compileProg(FS_DOWN, 'downsample');
+  progs.main = compileProg(FS_MAIN, 'main');
+  progs.temp = compileProg(FS_TEMPORAL, 'temporal');
+  progs.disp = compileProg(FS_DISPLAY, 'display');
+  quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  fbo = gl.createFramebuffer();
+}
+function tex2D(w, h, internal, format, type, filter){
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, internal, w, h); return t;
+}
+function allocate(w, h){
+  [srcTex, pyr, dogTex, ...hist].forEach(t => t && gl.deleteTexture(t));
+  W = w; H = h;
+  srcTex = tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+  levels = Math.floor(Math.log2(Math.max(w, h))) + 1;
+  pyr = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, pyr);
+  gl.texStorage2D(gl.TEXTURE_2D, levels, floatRT ? gl.RGBA16F : gl.RGBA8, w, h);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  dogTex = tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+  hist = [tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR), tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR)];
+}
+function bindTarget(tex, level, w, h){
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, level);
+  gl.viewport(0, 0, w, h);
+}
+function draw(){ gl.drawArrays(gl.TRIANGLES, 0, 3); }
+function uploadSource(el){
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, el);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+}
+function buildPyramid(){
+  const p = progs.lin; gl.useProgram(p);
+  bindTarget(pyr, 0, W, H);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex); setI(p, 'uSrc', 0);
+  setU(p, 'uHdr', state.vision.hdr); setU(p, 'uAS', AS); draw();
+  const d = progs.down; gl.useProgram(d); setI(d, 'uTex', 0);
+  gl.bindTexture(gl.TEXTURE_2D, pyr);
+  for(let k = 1; k < levels; k++){
+    const sw = Math.max(1, W >> (k - 1)), sh = Math.max(1, H >> (k - 1));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_BASE_LEVEL, k - 1); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, k - 1);
+    bindTarget(pyr, k, Math.max(1, W >> k), Math.max(1, H >> k));
+    setU(d, 'uTexel', [1/sw, 1/sh]); draw();
+  }
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_BASE_LEVEL, 0); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, levels - 1);
+}
+
+// ---------- Sources ----------
+const source = {kind:'image', name:'', el:null, video:null, work:null, needsPyr:true, resetHist:true};
+const MAX_SIDE = 1600;
+function setImageSource(cnv, meta){
+  stopVideo();
+  source.kind = 'image'; source.el = cnv; source.name = meta.name;
+  if(engineOK){ allocate(cnv.width, cnv.height); uploadSource(cnv); }
+  source.needsPyr = true; source.resetHist = true;
+  Object.assign(state.scene, {hfov: meta.hfov, dist: meta.dist, logL: meta.logL ?? state.scene.logL});
+  state.view.zoom = 1; state.view.cx = 0.5; state.view.cy = 0.5;
+  syncAll(); invalidate();
+}
+function stopVideo(){
+  if(source.video){ source.video.pause(); if(source.video.src) URL.revokeObjectURL(source.video.src); source.video.srcObject = null; source.video = null; }
+  if(source.stream){ source.stream.getTracks().forEach(t => t.stop()); source.stream = null; }
+  source.mirror = false; source.live = false; updateMediaUI();
+}
+const COARSE = matchMedia('(pointer: coarse)').matches;
+const VIDEO_SIDE = COARSE ? 960 : 1280; // phones: keep the full pipeline near 30 fps
+// Upload each decoded frame once (requestVideoFrameCallback), falling back to every animation frame
+function watchFrames(v){
+  source.newFrame = true;
+  if(!v.requestVideoFrameCallback) return;
+  const tick = () => { if(source.video !== v) return; source.newFrame = true; v.requestVideoFrameCallback(tick); };
+  v.requestVideoFrameCallback(tick);
+}
+function useVideo(v, name, mirror){
+  const sc = Math.min(1, VIDEO_SIDE/Math.max(v.videoWidth, v.videoHeight));
+  const work = document.createElement('canvas'); work.width = Math.round(v.videoWidth*sc); work.height = Math.round(v.videoHeight*sc);
+  source.kind = 'video'; source.video = v; source.work = work; source.name = name; source.mirror = mirror;
+  if(engineOK) allocate(work.width, work.height);
+  source.needsPyr = true; source.resetHist = true;
+  Object.assign(state.scene, {hfov:68, dist:3});
+  state.view.zoom = 1; state.view.cx = 0.5; state.view.cy = 0.5;
+  watchFrames(v); syncAll(); invalidate(); updateMediaUI();
+}
+let facing = 'environment';
+async function startCamera(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ cameraBlocked(); return; }
+  let stream;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30}}});
+  }catch(e){
+    if(inArtifact() || !window.isSecureContext) cameraBlocked();
+    else if(e && e.name === 'NotAllowedError') toast("Camera permission was refused. Allow it in your browser's site settings to use live mode.");
+    else if(e && e.name === 'NotFoundError') toast('No camera was found on this device.');
+    else toast('The camera could not start: ' + (e && e.message ? e.message : 'unknown error'));
+    return;
+  }
+  stopVideo();
+  $$('#samples button').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.autoplay = true; v.setAttribute('playsinline', '');
+  v.srcObject = stream; source.stream = stream;
+  await new Promise(r => { if(v.readyState >= 2) r(); else v.onloadeddata = r; });
+  try{ await v.play(); }catch(e){}
+  const tr = stream.getVideoTracks()[0];
+  const set = (tr && tr.getSettings) ? tr.getSettings() : {};
+  const front = set.facingMode ? set.facingMode === 'user' : facing === 'user';
+  useVideo(v, front ? 'Front camera' : 'Camera', front);
+  source.live = true; updateMediaUI();
+}
+function inArtifact(){ try{ return window.top !== window.self; }catch(e){ return true; } }
+function cameraBlocked(){
+  const url = (typeof HOSTED_URL === 'string' && HOSTED_URL) ? HOSTED_URL : '';
+  const n = $('#camnote'); n.hidden = false; n.innerHTML = '';
+  const p = document.createElement('span');
+  p.textContent = 'This preview cannot use the camera. ' + (url ? 'Open the standalone version for live mode:' : 'Live mode works in the standalone version served over https.');
+  n.appendChild(p);
+  if(url){ const l = document.createElement('a'); l.href = url; l.target = '_blank'; l.rel = 'noopener'; l.textContent = url.replace(/^https:\/\//, ''); n.appendChild(l); }
+  const x = document.createElement('button'); x.type = 'button'; x.textContent = 'Close'; x.className = 'btn'; x.onclick = () => { n.hidden = true; }; n.appendChild(x);
+}
+function updateMediaUI(){
+  const isVid = source.kind === 'video' && !!source.video;
+  $('#camflip').hidden = !source.live;
+  $('#camstop').hidden = !isVid;
+  $('#vidplay').hidden = !isVid || !!source.live;
+  if(isVid && !source.live) $('#vidplay').textContent = source.video.paused ? 'Play' : 'Pause';
+  $('#camlive').setAttribute('aria-pressed', String(!!source.live));
+}
+function loadSample(id){
+  stopVideo();
+  $$('#samples button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sample === id)));
+  setImageSource(SAMPLES[id]().canvas, SAMPLES[id]());
+}
+async function loadFile(file){
+  if(!file) return;
+  $$('#samples button').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  if(file.type.startsWith('video/')){
+    stopVideo();
+    const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.src = URL.createObjectURL(file);
+    await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('This video could not be decoded here. If it was recorded as HEVC, export it as MP4 (H.264) and try again.')); });
+    try{ await v.play(); }catch(e){}
+    useVideo(v, file.name, false);
+    toast('Playing ' + file.name);
+    return;
+  }
+  let bmp;
+  try{ bmp = await createImageBitmap(file, {imageOrientation:'from-image'}); }
+  catch(e){ toast('That file could not be read as an image. Try a JPEG, PNG or WebP.'); return; }
+  const sc = Math.min(1, MAX_SIDE/Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width*sc); c.height = Math.round(bmp.height*sc);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  setImageSource(c, {name:file.name, hfov:65, dist:3, logL:state.scene.logL});
+}
+
+// ---------- Render loop ----------
+let dirty = true, comp = null, t0 = performance.now(), lastT = 0, freezeT = 3.7;
+function invalidate(){ dirty = true; comp = null; scheduleUI(); }
+function needsAnim(){ return state.scene.live && (source.kind === 'video' || (comp && comp.anim)); }
+function frame(now){
+  requestAnimationFrame(frame);
+  if(!engineOK || !srcTex) return;
+  const anim = needsAnim();
+  if(!dirty && !anim && !resized) return;
+  if(!comp) comp = compile(state, source);
+  const t = state.scene.live ? (now - t0)/1000 : freezeT;
+  const dt = lastT ? Math.min(0.1, (now - lastT)/1000) : 1/60; lastT = now;
+  if(source.kind === 'video' && source.video && source.video.readyState >= 2 && (source.newFrame || !source.video.requestVideoFrameCallback)){
+    const v = source.video, w = source.work, x = w.getContext('2d');
+    if(source.mirror){ x.setTransform(-1, 0, 0, 1, w.width, 0); x.drawImage(v, 0, 0, w.width, w.height); x.setTransform(1, 0, 0, 1, 0, 0); }
+    else x.drawImage(v, 0, 0, w.width, w.height);
+    uploadSource(w); source.needsPyr = true; source.newFrame = false;
+  }
+  if(source.needsPyr){ buildPyramid(); source.needsPyr = false; }
+  renderMain(t);
+  renderTemporal(anim ? dt : 0);
+  renderDisplay();
+  dirty = false; resized = false;
+}
+function renderMain(t){
+  const p = progs.main, U = comp.U, S = state.scene; gl.useProgram(p);
+  bindTarget(dogTex, 0, W, H);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, pyr); setI(p, 'uPyr', 0);
+  const ppd = W/S.hfov;
+  setU(p, 'uLevels', levels); setU(p, 'uAS', AS); setU(p, 'uSize', [W, H]); setU(p, 'uPPD', ppd);
+  setU(p, 'uHalf', [S.hfov/2, S.hfov*H/W/2]); setU(p, 'uTime', t); setU(p, 'uTS', state.profile.eye === 'OD' ? 1 : -1);
+  for(const k of ['uAcu','uPeri','uTopo','uBlurG','uDev','uUlcer','uHaze','uCat','uCatTint','uSparkle','uContrast','uLocalDeg','uVeil','uBloom','uBloomDeg','uHalo','uTint','uRowL','uRod','uM','uDesat','uCsf','uTunnel','uArc','uStreak','uCurtain','uResid','uThird','uThirdTint','uNose','uLower','uNoise','uPart','uZone']) setU(p, k, U[k]);
+  const m = U.uDog; gl.uniformMatrix3fv(p.loc('uDog'), false, [m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]]);
+  const sc = new Float32Array(24); U.uScot.slice(0, 6).forEach((s, i) => sc.set(s, i*4)); gl.uniform4fv(p.loc('uScot[0]'), sc);
+  const oa = new Float32Array(16), ob = new Float32Array(16);
+  U.occ.slice(0, 4).forEach((o, i) => { oa.set([o.dir[0], o.dir[1], o.edge, o.soft], i*4); ob.set([...o.tint, o.dens], i*4); });
+  gl.uniform4fv(p.loc('uOccA[0]'), oa); gl.uniform4fv(p.loc('uOccB[0]'), ob);
+  // time-varying terms: tear film cycle, lens wobble, flicker illustration
+  let blurG = U.uBlurG, warp = [0, 3, 0], mucus = 0, blink = 0;
+  const ks = comp.kcsState;
+  if(ks){
+    const tempOn = state.stages[11];
+    const ph = tempOn ? t % ks.interval : 4.2;
+    if(tempOn && ph < 0.22) blink = Math.sin(Math.PI*ph/0.22);
+    const dry = smooth(0, ks.tbu, ph - 0.22);
+    const sk = ks.sigmaMax*ks.s*dry;
+    blurG = Math.sqrt(blurG*blurG + sk*sk);
+    warp = [fracB(0.015)*ks.s*dry, 3, t*0.6];
+    mucus = 0.35*ks.s*(0.4 + 0.6*dry);
+  }
+  setU(p, 'uBlurG', blurG); setU(p, 'uWarp', warp); setU(p, 'uMucus', mucus);
+  const lid = U.uLid.slice(); lid[3] = state.stages[2] ? blink : 0; setU(p, 'uLid', lid);
+  const g = U.uGhost.slice();
+  if(comp.lux > 0 && state.stages[11]){ g[1] += Math.sin(t*2*Math.PI*3)*0.4*comp.lux; g[2] += Math.cos(t*2*Math.PI*3)*0.25*comp.lux; }
+  setU(p, 'uGhost', g);
+  let gain = U.uGain; if(S.flicker && state.stages[11]) gain *= (Math.sin(t*2*Math.PI*6) > 0) ? 1 : 0.82;
+  setU(p, 'uGain', gain);
+  setU(p, 'uOverlay', state.view.overlay);
+  draw();
+}
+function renderTemporal(dt){
+  const p = progs.temp; gl.useProgram(p);
+  const prev = hist[histIdx], next = hist[1 - histIdx];
+  bindTarget(next, 0, W, H);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, dogTex); setI(p, 'uCur', 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, prev); setI(p, 'uPrev', 1);
+  let a = 1, sal = 0;
+  if(dt > 0 && state.stages[11] && !source.resetHist){
+    const tauCone = 1/(2*Math.PI*comp.fc), tau = lerp(tauCone, comp.rodTau/1000, comp.m);
+    a = 1 - Math.exp(-dt/tau);
+    sal = source.kind === 'video' ? state.vision.salience : 0;
+  }
+  source.resetHist = false;
+  setU(p, 'uA', a); setU(p, 'uSal', sal); draw();
+  histIdx = 1 - histIdx;
+  gl.activeTexture(gl.TEXTURE0);
+}
+let resized = true, rect = [0, 0, 1, 1];
+function renderDisplay(){
+  const p = progs.disp; gl.useProgram(p);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const cw = canvas.width, ch = canvas.height; gl.viewport(0, 0, cw, ch);
+  const sc = Math.min(cw/W, ch/H); const rw = W*sc, rh = H*sc; rect = [(cw - rw)/2, (ch - rh)/2, rw, rh];
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, hist[histIdx]); setI(p, 'uDogT', 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, srcTex); setI(p, 'uSrcT', 1);
+  const V = state.view;
+  setU(p, 'uRect', rect); setU(p, 'uZoom', V.zoom); setU(p, 'uCenter', [V.cx, V.cy]);
+  setU(p, 'uSplitX', rect[0] + V.split*rect[2]); setU(p, 'uMode', V.mode);
+  setU(p, 'uBg', bgColor);
+  const L = state.scene.logL;
+  setU(p, 'uHG', 0.06 + 0.94*smooth(-3.5, 1.2, L)); setU(p, 'uHD', 0.85*(1 - smooth(-3, 0, L)));
+  draw(); gl.activeTexture(gl.TEXTURE0);
+  placeSplit();
+}
+let bgColor = [0.03, 0.035, 0.05];
+function readBg(){ const c = getComputedStyle($('#vp')).backgroundColor.match(/\d+/g); if(c) bgColor = c.slice(0, 3).map(v => Math.pow(+v/255, 1)); }
+function resize(){
+  const r = $('#vp').getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(r.width*dpr)), h = Math.max(1, Math.round(r.height*dpr));
+  if(canvas.width !== w || canvas.height !== h){ canvas.width = w; canvas.height = h; resized = true; }
+}
+function placeSplit(){
+  const dpr = canvas.width/Math.max(1, canvas.clientWidth);
+  const el = $('#split');
+  el.hidden = state.view.mode !== 0;
+  el.style.left = ((rect[0] + state.view.split*rect[2])/dpr) + 'px';
+  $('#tagL').hidden = state.view.mode === 1; $('#tagR').hidden = state.view.mode === 2;
+  const pct = Math.round(rect[2]*state.view.zoom/W/dpr*100);
+  $('#zlabel').textContent = state.view.zoom === 1 ? 'Fit' : pct + '%';
+}
+
+// ---------- Viewport interaction ----------
+(function interaction(){
+  const vp = $('#vp'); const ptrs = new Map(); let mode = null, start = null;
+  const local = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const dpr = () => canvas.width/Math.max(1, canvas.clientWidth);
+  function splitX(){ return (rect[0] + state.view.split*rect[2])/dpr(); }
+  vp.addEventListener('pointerdown', e => {
+    if(e.target.closest('.zoom')) return;
+    vp.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, local(e));
+    const [x] = local(e);
+    if(ptrs.size === 2){ const [a, b] = [...ptrs.values()]; mode = 'pinch'; start = {d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: state.view.zoom}; return; }
+    if(state.view.mode === 0 && (Math.abs(x - splitX()) < 22 || state.view.zoom === 1)) { mode = 'split'; setSplit(x); }
+    else { mode = 'pan'; start = {p: local(e), cx: state.view.cx, cy: state.view.cy}; }
+  });
+  vp.addEventListener('pointermove', e => {
+    if(!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, local(e));
+    if(mode === 'split') setSplit(local(e)[0]);
+    else if(mode === 'pan' && start){ const [x, y] = local(e); const d = dpr();
+      state.view.cx = start.cx - (x - start.p[0])*d/rect[2]/state.view.zoom; state.view.cy = start.cy + (y - start.p[1])*d/rect[3]/state.view.zoom; clampView(); dirty = true; }
+    else if(mode === 'pinch' && ptrs.size === 2){ const [a, b] = [...ptrs.values()]; setZoom(start.z*Math.hypot(a[0] - b[0], a[1] - b[1])/start.d); }
+  });
+  const end = e => { ptrs.delete(e.pointerId); if(ptrs.size === 0) mode = null; };
+  vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end);
+  vp.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = local(e); zoomAt(state.view.zoom*Math.exp(-e.deltaY*0.0015), x, y); }, {passive:false});
+  vp.addEventListener('dblclick', () => { setZoom(1); });
+  function setSplit(x){ const d = dpr(); state.view.split = clamp((x*d - rect[0])/rect[2], 0, 1); dirty = true; }
+  function zoomAt(z, x, y){
+    const d = dpr(), V = state.view; z = clamp(z, 1, 16);
+    const lx = (x*d - rect[0])/rect[2], ly = 1 - (y*d - rect[1])/rect[3];
+    const ix = (lx - 0.5)/V.zoom + V.cx, iy = (ly - 0.5)/V.zoom + V.cy;
+    V.zoom = z; V.cx = ix - (lx - 0.5)/z; V.cy = iy - (ly - 0.5)/z; clampView(); dirty = true;
+  }
+  window.zoomAt = zoomAt;
+  $('#zin').onclick = () => setZoom(state.view.zoom*1.5);
+  $('#zout').onclick = () => setZoom(state.view.zoom/1.5);
+  $('#zlabel').onclick = () => setZoom(1);
+  $('#z11').onclick = () => setZoom(W/rect[2]);
+  // drag and drop, paste
+  ['dragenter', 'dragover'].forEach(ev => vp.addEventListener(ev, e => { e.preventDefault(); $('#drop').hidden = false; }));
+  ['dragleave', 'drop'].forEach(ev => vp.addEventListener(ev, e => { e.preventDefault(); if(ev === 'dragleave' && vp.contains(e.relatedTarget)) return; $('#drop').hidden = true; }));
+  vp.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if(f) loadFile(f).catch(err => toast(err.message)); });
+  window.addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])][0]; if(f) loadFile(f).catch(err => toast(err.message)); });
+})();
+function clampView(){ const V = state.view, h = 0.5/V.zoom; V.cx = clamp(V.cx, h, 1 - h); V.cy = clamp(V.cy, h, 1 - h); }
+function setZoom(z){ const vp = canvas.getBoundingClientRect(); zoomAt(clamp(z, 1, 16), vp.width/2, vp.height/2); if(z <= 1){ state.view.cx = state.view.cy = 0.5; } dirty = true; }
+
+// ---------- UI ----------
+let controls = [];
+const baseControls = controls; let condControls = [];
+function fmtAge(y){ return y < 1 ? Math.max(0, Math.round(y*52)) + ' weeks' : (y < 2 ? y.toFixed(1) : y.toFixed(1)) + ' years'; }
+function confBadge(c){ const t = {E:'Established', P:'Probable', S:'Speculative'}[c]; return c ? `<span class="conf ${c}" title="${t}">${c}</span>` : ''; }
+let uid = 0;
+function slider(host, d){
+  const id = 'c' + (uid++);
+  const wrap = document.createElement('div'); wrap.className = 'ctl';
+  wrap.innerHTML = `<label for="${id}">${d.label}${confBadge(d.conf)}</label><output for="${id}"></output><input type="range" id="${id}" min="${d.min}" max="${d.max}" step="${d.step}">${d.hint ? `<div class="hint">${d.hint}</div>` : ''}`;
+  host.appendChild(wrap);
+  const inp = wrap.querySelector('input'), out = wrap.querySelector('output');
+  const toS = d.toSlider || (v => v), fromS = d.fromSlider || (v => v);
+  inp.addEventListener('input', () => { d.set(fromS(+inp.value)); out.textContent = d.fmt(d.get()); if(d.after) d.after(); state.preset = null; markPreset(); invalidate(); });
+  const sync = () => { inp.value = toS(d.get()); out.textContent = d.fmt(d.get()); };
+  controls.push(sync); sync(); return wrap;
+}
+function select(host, d){
+  const id = 'c' + (uid++);
+  const wrap = document.createElement('div'); wrap.className = 'ctl';
+  wrap.innerHTML = `<label for="${id}">${d.label}${confBadge(d.conf)}</label><select id="${id}">${d.opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>${d.hint ? `<div class="hint">${d.hint}</div>` : ''}`;
+  host.appendChild(wrap);
+  const sel = wrap.querySelector('select');
+  sel.addEventListener('change', () => { d.set(sel.value); if(d.after) d.after(); state.preset = null; markPreset(); invalidate(); });
+  controls.push(() => { sel.value = String(d.get()); }); controls[controls.length - 1](); return wrap;
+}
+function check(host, d){
+  const id = 'c' + (uid++);
+  const wrap = document.createElement('label'); wrap.className = 'check'; wrap.htmlFor = id;
+  wrap.innerHTML = `<input type="checkbox" id="${id}"><span>${d.label}</span>${confBadge(d.conf)}`;
+  host.appendChild(wrap);
+  const cb = wrap.querySelector('input');
+  cb.addEventListener('change', () => { d.set(cb.checked); invalidate(); });
+  controls.push(() => { cb.checked = !!d.get(); }); controls[controls.length - 1](); return wrap;
+}
+function buildPanels(){
+  // presets
+  const ph = $('#presets');
+  PRESETS.forEach(pr => { const b = document.createElement('button'); b.type = 'button'; b.className = 'preset'; b.dataset.id = pr.id;
+    b.innerHTML = `<b>${pr.name}</b><span>${pr.note}</span>`; b.onclick = () => applyPreset(pr); ph.appendChild(b); });
+  const P = () => state.profile, pc = $('#profileCtl');
+  select(pc, {label:'Breed', opts: Object.entries(BREEDS).map(([k, b]) => [k, b.name]), get:() => P().breed,
+    set:v => { const b = BREEDS[v]; Object.assign(state.profile, {breed:v, ci:b.ci, lifespan_years:b.L, refraction_D:b.dD, tapetum:b.tap}); }, after: syncAll});
+  slider(pc, {label:'Age', min:0, max:1000, step:1, conf:'P', get:() => P().age_years, set:v => P().age_years = v, fmt:fmtAge,
+    toSlider: y => y < 1 ? y*300 : 300 + (y - 1)*700/15, fromSlider: s => s < 300 ? Math.max(1/52, s/300) : 1 + (s - 300)*15/700,
+    hint:'Lifespan-scaled: a giant breed ages faster than a toy.'});
+  slider(pc, {label:'Expected lifespan', min:6, max:17, step:0.5, conf:'P', get:() => P().lifespan_years, set:v => P().lifespan_years = v, fmt:v => v.toFixed(1) + ' years'});
+  slider(pc, {label:'Cephalic index', min:40, max:95, step:1, conf:'S', get:() => P().ci, set:v => P().ci = v, fmt:v => v + ' · ' + skullOf(v),
+    hint:'Skull width over length. Long noses get a horizontal visual streak; short noses a round area centralis (r = −0.795).'});
+  select(pc, {label:'Coat', opts:[['normal','Normal'],['merle_Mm','Merle (Mm)'],['merle_MM','Double merle (MM)'],['dilute','Dilute'],['white','White / subalbinotic']], get:() => P().coat, set:v => P().coat = v, conf:'P'});
+  select(pc, {label:'Iris of this eye', opts:[['brown','Brown'],['blue','Blue']], get:() => P().iris, set:v => P().iris = v, conf:'S', hint:'Less pigment means more stray light and glare.'});
+  select(pc, {label:'Tapetum', opts:[['1','Full'],['0.88','Smaller (small breeds)'],['0','Absent']], get:() => String(P().tapetum), set:v => P().tapetum = +v, conf:'S'});
+  slider(pc, {label:'Refraction', min:-3, max:2, step:0.25, conf:'S', get:() => P().refraction_D, set:v => P().refraction_D = v, fmt:v => (v > 0 ? '+' : '') + v.toFixed(2) + ' D', hint:'Negative is myopic. Rottweilers 64% and German shepherds 53% myopic in one clinic sample.'});
+  select(pc, {label:'Simulated eye', opts:[['OD','Right (OD)'],['OS','Left (OS)']], get:() => P().eye, set:v => P().eye = v, hint:'Sets which side of the image is temporal for one-sided conditions.'});
+  slider(pc, {label:'Age-related lens change', min:0, max:1, step:0.05, conf:'S', get:() => state.vision.ageLens, set:v => state.vision.ageLens = v, fmt:v => Math.round(v*100) + '%', hint:'Scales the typical nuclear sclerosis and lens opacity for this age.'});
+
+  const sc = $('#sceneCtl'), S = () => state.scene;
+  slider(sc, {label:'Light level', min:-3.5, max:3.5, step:0.1, conf:'P', get:() => S().logL, set:v => S().logL = v,
+    fmt:v => { const n = v < -2.5 ? 'starlight' : v < -1.5 ? 'moonlight' : v < -0.3 ? 'dusk' : v < 0.6 ? 'street lighting' : v < 2 ? 'indoors' : 'daylight'; return `${n} · 10^${v.toFixed(1)} cd/m²`; },
+    hint:'Below about 10 cd/m² rods take over: colour drains, acuity falls toward 3 cpd, and the dog stays brighter than a human would.'});
+  slider(sc, {label:'Image field of view', min:4, max:120, step:1, conf:'', get:() => S().hfov, set:v => S().hfov = v, fmt:v => v + '° wide', hint:'How much of the world the photo spans. A phone camera is about 65°.'});
+  slider(sc, {label:'Distance to subject', min:0, max:1000, step:1, get:() => S().dist, set:v => S().dist = v,
+    toSlider: d => Math.log(d/0.15)/Math.log(40/0.15)*1000, fromSlider: s => 0.15*Math.pow(40/0.15, s/1000),
+    fmt:v => v < 1 ? Math.round(v*100) + ' cm' : v.toFixed(1) + ' m', hint:'Dogs accommodate only 2 to 3 D, so anything nearer than about 40 cm blurs.'});
+  check(sc, {label:'Show muzzle silhouette', get:() => S().nose, set:v => S().nose = v, conf:'S'});
+  check(sc, {label:'Animate (tear film, particles, noise, video)', get:() => S().live, set:v => S().live = v});
+  check(sc, {label:'CRT flicker illustration (slowed down)', get:() => S().flicker, set:v => S().flicker = v, conf:'P'});
+  const info = document.createElement('p'); info.className = 'note'; info.id = 'srcinfo'; sc.appendChild(info);
+
+  const vc = $('#visionCtl'), V = () => state.vision;
+  slider(vc, {label:'Colour separation', min:0.5, max:1, step:0.05, conf:'P', get:() => V().chroma, set:v => V().chroma = v, fmt:v => 'k = ' + v.toFixed(2)});
+  slider(vc, {label:'Peak acuity', min:4, max:19, step:0.5, conf:'E', get:() => V().cpd, set:v => V().cpd = v, fmt:v => `${v} cpd · 20/${Math.round(600/v)}`, hint:'Typical dogs 6 to 12 cycles per degree; humans 30 to 60.'});
+  slider(vc, {label:'Peripheral blur growth', min:0, max:12, step:0.5, conf:'S', get:() => V().periph, set:v => V().periph = v, fmt:v => '×' + (1 + v).toFixed(1) + ' at edge'});
+  slider(vc, {label:'Contrast threshold', min:0, max:0.15, step:0.005, conf:'S', get:() => V().csf, set:v => V().csf = v, fmt:v => (v*100).toFixed(1) + '%', hint:'No dog contrast sensitivity curve has been measured.'});
+  slider(vc, {label:'Night gain', min:1, max:5, step:0.1, conf:'S', get:() => V().nightGain, set:v => V().nightGain = v, fmt:v => '×' + v.toFixed(1), hint:'Extrapolated from cats; the catalog suggests 2.5×.'});
+  slider(vc, {label:'Tapetal lower-field boost', min:0, max:0.5, step:0.01, conf:'S', get:() => V().lower, set:v => V().lower = v, fmt:v => '+' + Math.round(v*100) + '%'});
+  slider(vc, {label:'Rod noise', min:0, max:1.5, step:0.05, conf:'S', get:() => V().noise, set:v => V().noise = v, fmt:v => v.toFixed(2)});
+  slider(vc, {label:'Rod integration time', min:20, max:250, step:5, conf:'P', get:() => V().rodTau, set:v => V().rodTau = v, fmt:v => v + ' ms', hint:'Rods follow flicker to about 20 Hz, so dim scenes smear motion.'});
+  slider(vc, {label:'Veiling glare', min:0, max:0.2, step:0.005, conf:'S', get:() => V().veil, set:v => V().veil = v, fmt:v => v.toFixed(3)});
+  slider(vc, {label:'Highlight energy', min:0, max:10, step:0.5, conf:'S', get:() => V().hdr, set:v => V().hdr = v, fmt:v => v.toFixed(1), after:() => { source.needsPyr = true; }, hint:'Restores brightness to clipped lights in ordinary photos so glare can spread.'});
+  slider(vc, {label:'Motion salience (video)', min:0, max:0.5, step:0.01, conf:'S', get:() => V().salience, set:v => V().salience = v, fmt:v => '+' + Math.round(v*100) + '%'});
+  $('#visReset').onclick = () => { state.vision = {...VISION_DEFAULTS}; source.needsPyr = true; syncAll(); invalidate(); };
+
+  buildConditions();
+  buildPipeline();
+  drawSpectra();
+}
+function buildConditions(){
+  const host = $('#condList'); host.innerHTML = '';
+  condControls = []; const saved = controls; controls = condControls;
+  GROUPS.forEach(([g, gname]) => {
+    const sec = document.createElement('div'); sec.className = 'cgroup';
+    sec.innerHTML = `<h4><span>${gname}</span></h4>`;
+    CONDS.filter(c => c.g === g).forEach(c => {
+      const st = state.conditions[c.id];
+      const el = document.createElement('div'); el.className = 'cond' + (st.on ? ' on' : '');
+      const id = 'cond_' + c.id;
+      el.innerHTML = `<label class="chead" for="${id}"><input type="checkbox" id="${id}" ${st.on ? 'checked' : ''}><span class="nm">${c.name}</span><span class="sv">${st.on ? st.s.toFixed(2) : ''}</span><span class="photo ${c.photo}">Photo: ${c.photo}</span></label>`;
+      const body = document.createElement('div'); body.className = 'cbody'; body.hidden = !st.on;
+      el.appendChild(body);
+      const cb = el.querySelector('input');
+      cb.addEventListener('change', () => { st.on = cb.checked; st.source = 'manual'; el.classList.toggle('on', st.on); body.hidden = !st.on; el.querySelector('.sv').textContent = st.on ? st.s.toFixed(2) : ''; state.preset = null; markPreset(); invalidate(); });
+      const sl = slider(body, {label: c.id === 'glaucoma' ? 'Pressure (acute)' : 'Severity', conf:'S', min:0, max:1, step:0.01, get:() => st.s, set:v => { st.s = v; el.querySelector('.sv').textContent = v.toFixed(2); }, fmt:v => c.id === 'cataract' ? `${v.toFixed(2)} · ${catStage(v, st.x.hypermature)}` : c.id === 'pigmentary_keratitis' ? `${v.toFixed(2)} · Maini ≈ ${(v*14).toFixed(1)}` : v.toFixed(2)});
+      (c.extras || []).forEach(e => {
+        if(e.t === 'bool') check(body, {label:e.label, get:() => st.x[e.k], set:v => { st.x[e.k] = v; condControls.forEach(f => f()); }});
+        if(e.t === 'sel') select(body, {label:e.label, opts:e.opts, get:() => st.x[e.k], set:v => st.x[e.k] = v});
+        if(e.t === 'num') slider(body, {label:e.label, conf:'S', min:e.min, max:e.max, step:e.step, get:() => st.x[e.k], set:v => st.x[e.k] = v, fmt:v => e.unit ? Math.round(v) + e.unit : v.toFixed(2)});
+      });
+      const pd = document.createElement('p'); pd.textContent = c.d; body.appendChild(pd);
+      sec.appendChild(el);
+    });
+    host.appendChild(sec);
+  });
+  controls = saved;
+}
+function buildPipeline(){
+  const host = $('#pipe'); host.innerHTML = '';
+  STAGES.forEach(s => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'st' + (s.fixed ? ' fixed' : ''); b.title = s.tip;
+    b.innerHTML = `<span class="n">${s.n}</span>${s.name}`;
+    b.setAttribute('aria-pressed', String(state.stages[s.n]));
+    if(!s.fixed) b.onclick = () => { state.stages[s.n] = !state.stages[s.n]; b.setAttribute('aria-pressed', String(state.stages[s.n])); if(s.n === 11) source.resetHist = true; invalidate(); };
+    else b.disabled = true;
+    host.appendChild(b);
+  });
+}
+function markPreset(){ $$('#presets .preset').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === state.preset))); }
+function syncAll(){ baseControls.forEach(f => f()); buildConditions(); markPreset(); }
+
+// spectrum strips: approximate spectral colours, then the dog matrix
+function wl2rgb(l){
+  let r = 0, g = 0, b = 0;
+  if(l < 440){ r = -(l - 440)/60; b = 1; } else if(l < 490){ g = (l - 440)/50; b = 1; } else if(l < 510){ g = 1; b = -(l - 510)/20; }
+  else if(l < 580){ r = (l - 510)/70; g = 1; } else if(l < 645){ r = 1; g = -(l - 645)/65; } else r = 1;
+  const f = l < 420 ? 0.3 + 0.7*(l - 380)/40 : l > 645 ? 0.3 + 0.7*(700 - l)/55 : 1;
+  const lin = v => { v = Math.max(0, v*f); return v <= 0.04045 ? v/12.92 : Math.pow((v + 0.055)/1.055, 2.4); };
+  return [lin(r), lin(g), lin(b)];
+}
+function drawSpectra(){
+  const enc = v => Math.round(255*clamp(v <= 0.0031308 ? 12.92*v : 1.055*Math.pow(clamp(v, 0, 1), 1/2.4) - 0.055, 0, 1));
+  const M = dogMatrix(state.vision.chroma);
+  ['specH', 'specD'].forEach(id => {
+    const c = $('#' + id), x = c.getContext('2d'), w = c.width, h = c.height;
+    for(let i = 0; i < w; i++){
+      const l = 400 + 300*i/w; let rgb = wl2rgb(l);
+      if(id === 'specD') rgb = M.map(row => row[0]*rgb[0] + row[1]*rgb[1] + row[2]*rgb[2]);
+      x.fillStyle = `rgb(${rgb.map(enc).join(',')})`; x.fillRect(i, 0, 1, h);
+    }
+  });
+  $('#ticks').innerHTML = [400, 480, 555, 620, 700].map(l => `<span style="left:${(l - 400)/3}%" class="${l === 480 ? 'np' : ''}">${l === 480 ? '480 neutral' : l}</span>`).join('');
+}
+
+// derived panel, field diagram, HUD, JSON views
+let uiPending = false;
+function scheduleUI(){ if(uiPending) return; uiPending = true; requestAnimationFrame(() => { uiPending = false; updateUI(); }); }
+function updateUI(){
+  if(!comp) comp = compile(state, source);
+  const d = comp.derived;
+  const rows = [
+    ['Skull type', d.skull], ['Visual streak strength', d.streak_strength], ['Normalised age (age ÷ lifespan)', d.a],
+    ['Nuclear sclerosis', d.nuclear_sclerosis], ['Typical lens opacity', d.age_lens_opacity], ['Accommodation range', d.accommodation_max_D + ' D'],
+    ['Effective refraction', d.refraction_D + ' D'], ['Defocus at subject', d.defocus_D + ' D'], ['Pupil', d.pupil_mm + ' mm'],
+    ['Retinal gain, day / night', d.retina_gain_photopic + ' / ' + d.retina_gain_scotopic], ['Glare multiplier', '×' + d.glare_multiplier],
+    ['Flicker fusion', '≈ ' + d.temporal_cutoff_Hz + ' Hz'], ['Development', d.development],
+  ];
+  $('#derived').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  drawFov(d.field_total_deg, d.binocular_overlap_deg);
+  const m = comp.m, regime = m < 0.05 ? 'Photopic' : m > 0.95 ? 'Scotopic' : 'Mesopic';
+  const cpd = d.acuity_cpd_centre;
+  const ov = state.view.overlay === 1 ? `<span class="chip">Acuity map: <b>blue</b> 2 cpd or less, <b>gold</b> 16 cpd, a line at each doubling</span>`
+    : state.view.overlay === 2 ? `<span class="chip">Dashed lines: binocular zone ±${Math.round(d.binocular_overlap_deg/2)}°${comp.U.uTunnel[0] < 179 ? ' · blue ring: remaining field' : ''}</span>` : '';
+  $('#hud').innerHTML = ov + `<span class="chip">${regime}${m >= 0.05 ? ` · rods <b>${Math.round(m*100)}%</b>` : ''}</span><span class="chip">Centre <b>${cpd} cpd</b> · 20/${Math.round(600/Math.max(cpd, 0.1))}</span><span class="chip">${(W/state.scene.hfov).toFixed(0)} px/°</span>`;
+  const n = CONDS.filter(c => state.conditions[c.id].on).length;
+  $('#ccount').hidden = n === 0; $('#ccount').textContent = n;
+  const si = $('#srcinfo'); if(si) si.textContent = `Source: ${source.name || 'sample'} · ${W}×${H} px${source.kind === 'video' ? ' · video' : ''}.`;
+  if(!$('[data-pane="data"]').hidden) renderJSON();
+  if(lastChroma !== state.vision.chroma){ lastChroma = state.vision.chroma; drawSpectra(); }
+}
+let lastChroma = 1;
+function renderJSON(){
+  $('#jProfile').textContent = JSON.stringify(profileJSON(state, comp), null, 2);
+  $('#jCond').textContent = JSON.stringify(condHypotheses(state), null, 2);
+  $('#jShader').textContent = JSON.stringify(comp.shader, null, 2);
+}
+function arcPath(cx, cy, r, a0, a1){ // angles in degrees, 0 = straight ahead (up), clockwise positive
+  const p = a => [cx + r*Math.sin(a*Math.PI/180), cy - r*Math.cos(a*Math.PI/180)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1), large = (a1 - a0) > 180 ? 1 : 0;
+  return `M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`;
+}
+function drawFov(F, B){
+  const svg = $('#fovsvg'), cx = 80, cy = 84, r = 70;
+  svg.innerHTML = `
+    <path d="${arcPath(cx, cy, r, F/2, 360 - F/2)}" fill="var(--sunken)" stroke="var(--line)"/>
+    <path d="${arcPath(cx, cy, r, -F/2, F/2)}" fill="var(--dogblue)" fill-opacity="0.22" stroke="var(--dogblue)" stroke-opacity="0.5"/>
+    <path d="${arcPath(cx, cy, r, -B/2, B/2)}" fill="var(--dogyellow-fill)" fill-opacity="0.75"/>
+    <ellipse cx="${cx}" cy="${cy + 4}" rx="11" ry="15" fill="var(--fg)"/>
+    <ellipse cx="${cx}" cy="${cy - 12}" rx="5" ry="7" fill="var(--fg)"/>`;
+  $('#fovlegend').innerHTML = `<div><i style="background:var(--dogyellow-fill)"></i>Binocular ${B}°</div><div><i style="background:var(--dogblue);opacity:.5"></i>Total field ${F}°</div><div><i style="background:var(--sunken);border:1px solid var(--line)"></i>Blind behind ${360 - F}°</div><div style="color:var(--muted)">Field sizes by skull type are working values with no primary source.</div>`;
+}
+
+// tabs
+$$('#tabs button').forEach(b => b.addEventListener('click', () => {
+  $$('#tabs button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+  $$('.pane').forEach(p => p.hidden = p.dataset.pane !== b.dataset.tab);
+  if(b.dataset.tab === 'data'){ if(!comp) comp = compile(state, source); renderJSON(); }
+}));
+$$('#viewmode button').forEach(b => b.addEventListener('click', () => { state.view.mode = +b.dataset.mode; $$('#viewmode button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); dirty = true; }));
+$('#overlay').addEventListener('change', e => { state.view.overlay = +e.target.value; dirty = true; scheduleUI(); });
+$$('#samples button').forEach(b => b.addEventListener('click', () => loadSample(b.dataset.sample)));
+$('#file').addEventListener('change', e => { loadFile(e.target.files[0]).catch(err => toast(err.message)); e.target.value = ''; });
+$('#cam').addEventListener('change', e => { loadFile(e.target.files[0]).catch(err => toast(err.message)); e.target.value = ''; });
+if(COARSE) $('#camlabel').hidden = false;
+$('#camlive').onclick = () => { if(!source.live) startCamera(); };
+$('#camflip').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; startCamera(); };
+$('#camstop').onclick = () => { loadSample('yard'); };
+$('#vidplay').onclick = () => { const v = source.video; if(!v) return; if(v.paused) v.play(); else v.pause(); updateMediaUI(); };
+document.addEventListener('visibilitychange', () => { const v = source.video; if(!source.live || !v) return; if(document.hidden) v.pause(); else v.play().catch(() => {}); });
+$('#condClear').onclick = () => { state.conditions = freshConditions(); state.preset = null; buildConditions(); markPreset(); invalidate(); };
+$$('[data-copy]').forEach(b => b.addEventListener('click', () => {
+  const pre = $('#' + b.dataset.copy), txt = pre.textContent;
+  const sel = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selected. Press Ctrl+C or ⌘C to copy.'); };
+  try{ navigator.clipboard.writeText(txt).then(() => toast('Copied'), sel); }catch(e){ sel(); }
+}));
+
+// import
+$('#impExample').onclick = () => { $('#imp').value = JSON.stringify(EXAMPLE_DETECTOR, null, 2); $('#impMsg').textContent = 'Example loaded. Press Apply JSON to map it onto the simulation.'; $('#impMsg').className = 'msg'; };
+$('#impApply').onclick = () => {
+  const msg = $('#impMsg'); msg.className = 'msg';
+  let j; try{ j = JSON.parse($('#imp').value); }catch(e){ msg.className = 'msg err'; msg.textContent = 'That is not valid JSON: ' + e.message; return; }
+  let conds = null, urgent = [], notes = [], prof = null;
+  if(j.findings){ const r = mapDetector(j); conds = r.conditions; urgent = r.urgent; notes = r.notes;
+    if(r.metadata.breed && BREEDS[String(r.metadata.breed).toLowerCase()]) prof = {breed: String(r.metadata.breed).toLowerCase()};
+    if(typeof r.metadata.age_years === 'number') prof = Object.assign(prof || {}, {age_years: r.metadata.age_years});
+  } else if(j.profile){ prof = j.profile; conds = j.profile.conditions || j.conditions || null; }
+  else if(j.conditions){ conds = j.conditions; }
+  else { msg.className = 'msg err'; msg.textContent = 'Expected detector output with "findings", condition hypotheses with "conditions", or a "profile".'; return; }
+  if(prof){
+    if(prof.breed && BREEDS[prof.breed]){ const keepAge = prof.age_years ?? state.profile.age_years; state.profile = breedProfile(prof.breed, keepAge); }
+    ['age_years', 'lifespan_years', 'refraction_D', 'tapetum', 'coat', 'eye'].forEach(k => { if(prof[k] !== undefined && prof[k] !== null) state.profile[k] = prof[k]; });
+    if(typeof prof.cephalic_index === 'number') state.profile.ci = prof.cephalic_index;
+    if(prof.iris){ const v = prof.iris[state.profile.eye] || Object.values(prof.iris)[0]; if(v) state.profile.iris = v === 'blue' ? 'blue' : 'brown'; }
+  }
+  const unknown = [];
+  if(conds){
+    state.conditions = freshConditions();
+    Object.entries(conds).forEach(([id, v]) => {
+      const c = state.conditions[id]; if(!c){ unknown.push(id); return; }
+      c.on = true; c.s = clamp(+v.s || 0, 0, 1); c.source = v.source || 'import';
+      ['type', 'origin', 'chronic', 'damage', 'dir_deg'].forEach(k => { if(v[k] !== undefined) c.x[k] = v[k]; });
+      if(v.stage === 'hypermature') c.x.hypermature = true;
+    });
+  }
+  state.preset = null; syncAll(); invalidate();
+  const n = conds ? Object.keys(conds).length - unknown.length : 0;
+  const ug = $('#urgent');
+  if(urgent.length){ ug.hidden = false; ug.textContent = 'Seek veterinary care now. The photo shows signs that need urgent attention (' + urgent.join(', ').replace(/_/g, ' ') + '). The simulation below is only an illustration.'; }
+  else ug.hidden = true;
+  msg.textContent = `Applied ${n} condition${n === 1 ? '' : 's'}${prof ? ' and profile fields' : ''}.` + (unknown.length ? ` Ignored unknown: ${unknown.join(', ')}.` : '') + (notes.length ? ' ' + notes.join(' ') : '');
+};
+
+// save
+(async () => {
+  try{
+    for(let i = 0; i < 30 && !window.claude?.use; i++) await new Promise(r => setTimeout(r, 100));
+    let dl = window.claude?.use ? await window.claude.use('downloads') : null;
+    if(!dl && !inArtifact()) dl = {save: async ({filename, data}) => { // standalone page: a plain download link works
+      const u = URL.createObjectURL(data), l = document.createElement('a'); l.href = u; l.download = filename; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }};
+    if(!dl) return;
+    const btn = $('#save'); btn.hidden = false;
+    btn.onclick = async () => {
+      if(!engineOK) return;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, hist[histIdx], 0);
+      const px = new Uint8Array(W*H*4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); const id = x.createImageData(W, H);
+      for(let y = 0; y < H; y++) id.data.set(px.subarray((H - 1 - y)*W*4, (H - y)*W*4), y*W*4);
+      x.putImageData(id, 0, 0);
+      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+      try{ await dl.save({filename: 'dog-view-' + (state.preset || 'custom') + '.png', data: blob}); toast('Saved'); }
+      catch(e){ if(e && e.code !== 'declined') toast('The image could not be saved here.'); }
+    };
+  }catch(e){}
+})();
+
+let toastT;
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2600); }
+
+// ---------- Boot ----------
+buildPanels();
+readBg();
+if(engineOK){
+  try{ initGL(); }
+  catch(e){ engineOK = false; console.error(e); const f = document.createElement('div'); f.className = 'glfail'; f.textContent = 'The shader failed to compile on this device: ' + e.message; $('#vp').appendChild(f); }
+} else {
+  const f = document.createElement('div'); f.className = 'glfail'; f.textContent = 'This browser does not offer WebGL 2, which the simulator needs. Try a current Chrome, Edge, Firefox or Safari.'; $('#vp').appendChild(f);
+}
+new ResizeObserver(() => { resize(); dirty = true; }).observe($('#vp'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readBg(); dirty = true; });
+new MutationObserver(() => { readBg(); dirty = true; }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+resize();
+loadSample('yard');
+markPreset();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

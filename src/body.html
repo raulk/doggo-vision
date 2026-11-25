@@ -1,0 +1,129 @@
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <h1>Doggo Vision Lab</h1>
+        <p>An illustration built from the research catalog. Not a measured percept and not a diagnosis.</p>
+      </div>
+    </div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Sample scenes" id="samples">
+        <button type="button" data-sample="yard" aria-pressed="true">Backyard</button>
+        <button type="button" data-sample="street" aria-pressed="false">Night street</button>
+        <button type="button" data-sample="chart" aria-pressed="false">Vision chart</button>
+      </div>
+      <label class="btn" for="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 4v12"/><path d="m7 9 5-5 5 5"/></svg>Photo or video</label>
+      <input type="file" id="file" accept="image/*,video/*" class="vh">
+      <label class="btn" for="cam" id="camlabel" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
+      <input type="file" id="cam" accept="image/*" capture="environment" class="vh">
+      <button type="button" class="btn" id="camlive" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>Live camera</button>
+      <button type="button" class="btn" id="camflip" hidden>Switch camera</button>
+      <button type="button" class="btn" id="vidplay" hidden>Pause</button>
+      <button type="button" class="btn" id="camstop" hidden>Stop</button>
+      <div class="seg" role="group" aria-label="View" id="viewmode">
+        <button type="button" data-mode="0" aria-pressed="true">Split</button>
+        <button type="button" data-mode="1" aria-pressed="false">Dog</button>
+        <button type="button" data-mode="2" aria-pressed="false">Human</button>
+      </div>
+      <select class="sel" id="overlay" aria-label="Overlay">
+        <option value="0">No overlay</option>
+        <option value="1">Acuity map</option>
+        <option value="2">Field zones</option>
+      </select>
+      <button type="button" class="btn" id="save" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Save dog view</button>
+    </div>
+  </header>
+
+  <main class="work">
+    <section class="stagecol">
+      <div class="viewport" id="vp">
+        <canvas id="gl"></canvas>
+        <div class="split" id="split"><div class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg></div></div>
+        <span class="tag l" id="tagL">Human · same light</span>
+        <span class="tag r" id="tagR">Dog</span>
+        <div class="urgent" id="urgent" hidden></div>
+        <div class="camnote" id="camnote" role="status" hidden></div>
+        <div class="hud" id="hud"></div>
+        <div class="zoom" aria-label="Zoom">
+          <button type="button" id="zout" aria-label="Zoom out">−</button>
+          <button type="button" id="zlabel" title="Fit to view">Fit</button>
+          <button type="button" id="z11" title="One image pixel per screen pixel">1:1</button>
+          <button type="button" id="zin" aria-label="Zoom in">+</button>
+        </div>
+        <div class="drop" id="drop" hidden>Drop a photo or video to see it as a dog would</div>
+      </div>
+      <div class="pipewrap">
+        <div class="pipehead"><span>Pipeline, in the order light travels</span><small id="pipenote">Tap a stage to bypass it</small></div>
+        <div class="pipe" id="pipe"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" aria-selected="true" data-tab="dog">Dog</button>
+        <button role="tab" aria-selected="false" data-tab="scene">Scene</button>
+        <button role="tab" aria-selected="false" data-tab="vision">Vision</button>
+        <button role="tab" aria-selected="false" data-tab="cond">Conditions<span class="count" id="ccount" hidden>0</span></button>
+        <button role="tab" aria-selected="false" data-tab="data">Data</button>
+      </div>
+
+      <div class="pane" data-pane="dog">
+        <h3>Presets</h3>
+        <div class="presets" id="presets"></div>
+        <h3>Profile</h3>
+        <div id="profileCtl"></div>
+        <h3>Visual field</h3>
+        <div class="fov">
+          <svg id="fovsvg" viewBox="0 0 160 160" role="img" aria-label="Top-down visual field"></svg>
+          <div class="legend" id="fovlegend"></div>
+        </div>
+        <h3>Derived from the profile</h3>
+        <dl class="derived" id="derived"></dl>
+      </div>
+
+      <div class="pane" data-pane="scene" hidden>
+        <h3>Light and geometry</h3>
+        <p class="lede">These describe the photo. Acuity is drawn to scale for the field of view you set, so zoom to 1:1 to judge fine detail.</p>
+        <div id="sceneCtl"></div>
+      </div>
+
+      <div class="pane" data-pane="vision" hidden>
+        <h3>Colour</h3>
+        <div class="spec">
+          <div class="row"><span>Human</span><canvas id="specH" width="560" height="22"></canvas></div>
+          <div class="row"><span>Dog</span><canvas id="specD" width="560" height="22"></canvas></div>
+          <div class="ticks" id="ticks"></div>
+        </div>
+        <p class="lede">Two cone types peak near 430 and 555 nm. Reds collapse onto dark olive, greens onto mustard, and blue-green near 480 nm turns grey.</p>
+        <div id="visionCtl"></div>
+        <div class="row2"><button type="button" class="btn" id="visReset">Reset baseline values</button></div>
+        <p class="note">Badges show the catalog's confidence: <span class="conf E">E</span> established, <span class="conf P">P</span> probable, <span class="conf S">S</span> speculative. Nearly every disease magnitude is speculative.</p>
+      </div>
+
+      <div class="pane" data-pane="cond" hidden>
+        <p class="lede">Grouped in the order light passes through the eye. Severity runs 0 to 1, as in the detector schema. "Photo" shows whether a macro photo of the eye can reveal it.</p>
+        <div class="row2"><button type="button" class="btn" id="condClear">Clear all conditions</button></div>
+        <div id="condList"></div>
+      </div>
+
+      <div class="pane" data-pane="data" hidden>
+        <h3>Import</h3>
+        <p class="lede">Paste detector output (schema 0.1), condition hypotheses, or a profile. The mapping rules follow Part III §8 of the catalog.</p>
+        <textarea class="imp" id="imp" spellcheck="false" aria-label="JSON to import" placeholder='{"schema_version":"0.1","eye":"OD","findings":{...}}'></textarea>
+        <div class="row2">
+          <button type="button" class="btn primary" id="impApply">Apply JSON</button>
+          <button type="button" class="btn" id="impExample">Load example detector output</button>
+        </div>
+        <div class="msg" id="impMsg" role="status"></div>
+        <h3>Profile</h3>
+        <div class="jsonbox"><button type="button" class="btn" data-copy="jProfile">Copy</button><pre id="jProfile"></pre></div>
+        <h3>Condition hypotheses</h3>
+        <div class="jsonbox"><button type="button" class="btn" data-copy="jCond">Copy</button><pre id="jCond"></pre></div>
+        <h3>Shader parameters</h3>
+        <div class="jsonbox"><button type="button" class="btn" data-copy="jShader">Copy</button><pre id="jShader"></pre></div>
+      </div>
+    </aside>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
