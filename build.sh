@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Builds two single-file outputs from src/:
-#   index.html             standalone site (GitHub Pages; camera works over https)
+#   site/index.html        standalone site (Cloudflare Pages; camera works over https)
 #   dist/artifact.html     page body for the claude.ai artifact preview (no camera there)
 set -euo pipefail
 cd "$(dirname "$0")"
+mkdir -p site dist
 JS="src/shaders.js src/model.js src/samples.js src/app.js"
 {
   printf '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
@@ -14,7 +15,7 @@ JS="src/shaders.js src/model.js src/samples.js src/app.js"
   cat src/body.html
   echo "<script>"; cat $JS; echo "</script>"
   printf '</body>\n</html>\n'
-} > index.html
-mkdir -p dist
+} > site/index.html
+
 { cat src/head.html src/body.html; echo "<script>"; cat $JS; echo "</script>"; } > dist/artifact.html
-echo "built index.html and dist/artifact.html"
+echo "built site/index.html and dist/artifact.html"
