@@ -6,7 +6,7 @@ interface ViewportActions {
 	panoramaField: () => Vec2 | undefined;
 	canFocus: () => boolean;
 	focus: (uv: Vec2) => void;
-	onResize?: () => void;
+	onResize?: (rect: Vec4, background: Vec3) => void;
 }
 
 type Gesture =
@@ -69,7 +69,8 @@ export class DogsightViewport {
 		this.canvas.width = width;
 		this.canvas.height = height;
 		this.fitRect();
-		this.actions.onResize?.();
+		this.actions.onResize?.(this.rect, this.background);
+		this.placeControls();
 		this.changed();
 	}
 
