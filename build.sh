@@ -20,7 +20,7 @@ JS="src/shaders.js src/model.js src/samples.js src/app.js"
 <meta property="og:image" content="https://doggo-vision.unstoppablesys.workers.dev/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A garden scene split in two: a human view on the left, and the same scene through a 15-year-old dog's eyes on the right, softer and veiled with muted colour.">
+<meta property="og:image:alt" content="A dog's silhouette in the foreground looking into a garden, which is rendered the way a 15-year-old dog sees it: soft, veiled, with muted yellow and blue colour. Title: See the world through a dog's eyes.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Doggo Vision: see the world through a dog's eyes">
 <meta name="twitter:description" content="Dichromat colour, low acuity, night vision and eye conditions, rendered live over your camera. An estimate, not a diagnosis.">
