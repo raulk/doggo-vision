@@ -117,6 +117,15 @@
 
       <div class="pane" data-pane="cond" hidden>
         <p class="lede">Grouped in the order light passes through the eye. Severity runs 0 to 1, as in the detector schema. "Photo" shows whether a macro photo of the eye can reveal it.</p>
+        <label class="mcheck boxed"><input type="checkbox" id="binoOn"> <span><b>Both eyes</b><small>Give each eye its own conditions and blend them by visual-field zone</small></span></label>
+        <div id="binoCtl" hidden>
+          <div class="seg" role="group" aria-label="Eye being edited" id="eyeSeg">
+            <button type="button" data-eye="OS" aria-pressed="true">Left eye</button>
+            <button type="button" data-eye="OD" aria-pressed="false">Right eye</button>
+          </div>
+          <div id="binoSliders"></div>
+          <p class="lede" id="binoNote"></p>
+        </div>
         <div class="row2"><button type="button" class="btn" id="condClear">Clear all conditions</button></div>
         <div id="condList"></div>
       </div>

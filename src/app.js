@@ -13,9 +13,23 @@ const state = {
   stages: STAGES.map(() => true),
   view: {mode:0, split:0.5, zoom:1, cx:0.5, cy:0.5, overlay:0, hud:false},
   preset: 'lab',
+  // Both-eyes mode: each eye keeps its own conditions; state.conditions is the eye being edited (profile.eye)
+  binoc: {on:false, dom:0.75, eyes:{OS:null, OD:null}},
 };
+const otherEye = e => e === 'OD' ? 'OS' : 'OD';
+const condLoad = C => Object.values(C).reduce((n, c) => n + (c.on ? c.s : 0), 0);
+function setBinoc(on){
+  const B = state.binoc;
+  if(on && !B.on){ const cur = state.profile.eye; B.eyes[cur] = state.conditions; B.eyes[otherEye(cur)] = JSON.parse(JSON.stringify(state.conditions)); }
+  B.on = on; state.preset = null; syncAll(); invalidate();
+}
+function editEye(e){
+  const B = state.binoc; if(!B.on) return;
+  state.profile.eye = e; state.conditions = B.eyes[e]; syncAll(); invalidate();
+}
 
 const PRESETS = [
+  {id:'kcs15both', name:'Senior, 15: both eyes', note:'Both eyes blended: clearer right eye leads where the fields overlap', p:['mixed', 15], prof:{lifespan_years:14, eye:'OS'}, eyes:{OS:'kcs15', OD:'kcs15b'}},
   {id:'kcs15', name:'Senior, 15: cloudy left eye', note:'Dry eye, corneal scarring and pigment, lens fog', p:['mixed', 15], prof:{lifespan_years:14, eye:'OS'}, c:{kcs:{s:0.6, x:{chronic:false, blink:6, tbu:4, mucus:0.5, squint:0.35}}, lipid_dystrophy:{s:0.55}, pigmentary_keratitis:{s:0.35, x:{origin:'diffuse'}}, nuclear_sclerosis:{s:0.75}}},
   {id:'kcs15b', name:'Senior, 15: clearer right eye', note:'Milder dry eye, a few spots, lens fog', p:['mixed', 15], prof:{lifespan_years:14, eye:'OD'}, c:{kcs:{s:0.4, x:{chronic:false, blink:6, tbu:6, mucus:0.35, squint:0.25}}, lipid_dystrophy:{s:0.15}, pigmentary_keratitis:{s:0.15, x:{origin:'temporal'}}, nuclear_sclerosis:{s:0.7}}},
   {id:'puppy3', name:'Puppy, 3 weeks', note:'Eyes just open, retina maturing', p:['labrador', 3/52]},
@@ -34,10 +48,18 @@ const PRESETS = [
   {id:'brachy', name:'Brachycephalic senior', note:'French bulldog, 9 years', p:['frenchie', 9], c:{pigmentary_keratitis:{s:0.45, x:{origin:'medial'}}, entropion:{s:0.4}}},
 ];
 
+function presetConds(c){
+  const C = freshConditions();
+  Object.entries(c || {}).forEach(([id, v]) => { const k = C[id]; k.on = true; k.s = v.s; Object.assign(k.x, v.x || {}); k.source = 'preset'; });
+  return C;
+}
 function applyPreset(pr){
   state.profile = Object.assign(breedProfile(pr.p[0], pr.p[1]), pr.prof || {});
-  state.conditions = freshConditions();
-  Object.entries(pr.c || {}).forEach(([id, v]) => { const c = state.conditions[id]; c.on = true; c.s = v.s; Object.assign(c.x, v.x || {}); c.source = 'preset'; });
+  const B = state.binoc;
+  if(pr.eyes){
+    B.on = true; B.eyes = {OS: presetConds(PRESETS.find(p => p.id === pr.eyes.OS).c), OD: presetConds(PRESETS.find(p => p.id === pr.eyes.OD).c)};
+    state.conditions = B.eyes[state.profile.eye];
+  } else { B.on = false; state.conditions = presetConds(pr.c); }
   state.preset = pr.id;
   syncAll(); invalidate();
 }
@@ -67,7 +89,7 @@ function setU(p, name, v){
 }
 function setI(p, name, v){ const l = p.loc(name); if(l !== null) gl.uniform1i(l, v); }
 
-let quad, fbo, srcTex, pyr, levels = 1, dogTex, hist = [], histIdx = 0, W = 0, H = 0;
+let quad, fbo, srcTex, pyr, levels = 1, dogTex, dogTex2, blendTex, hist = [], histIdx = 0, W = 0, H = 0;
 function initGL(){
   floatRT = !!gl.getExtension('EXT_color_buffer_float');
   AS = floatRT ? 1 : 4;
@@ -75,6 +97,7 @@ function initGL(){
   progs.down = compileProg(FS_DOWN, 'downsample');
   progs.main = compileProg(FS_MAIN, 'main');
   progs.temp = compileProg(FS_TEMPORAL, 'temporal');
+  progs.blend = compileProg(FS_BLEND, 'blend');
   progs.disp = compileProg(FS_DISPLAY, 'display');
   quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -88,7 +111,7 @@ function tex2D(w, h, internal, format, type, filter){
   gl.texStorage2D(gl.TEXTURE_2D, 1, internal, w, h); return t;
 }
 function allocate(w, h){
-  [srcTex, pyr, dogTex, ...hist].forEach(t => t && gl.deleteTexture(t));
+  [srcTex, pyr, dogTex, dogTex2, blendTex, ...hist].forEach(t => t && gl.deleteTexture(t));
   W = w; H = h;
   srcTex = tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
   levels = Math.floor(Math.log2(Math.max(w, h))) + 1;
@@ -97,6 +120,8 @@ function allocate(w, h){
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   dogTex = tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+  dogTex2 = tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+  blendTex = tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
   hist = [tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR), tex2D(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR)];
 }
 function bindTarget(tex, level, w, h){
@@ -267,15 +292,18 @@ async function loadFile(file){
 }
 
 // ---------- Render loop ----------
+let comp2 = null;
 let dirty = true, comp = null, t0 = performance.now(), lastT = 0, freezeT = 3.7;
-function invalidate(){ dirty = true; comp = null; scheduleUI(); }
-function needsAnim(){ return state.scene.live && (source.kind === 'video' || (comp && comp.anim)); }
+function invalidate(){ dirty = true; comp = null; comp2 = null; scheduleUI(); }
+function needsAnim(){ return state.scene.live && (source.kind === 'video' || (comp && comp.anim) || (state.binoc.on && comp2 && comp2.anim)); }
 function frame(now){
   requestAnimationFrame(frame);
   if(!engineOK || !srcTex) return;
   const anim = needsAnim();
   if(!dirty && !anim && !resized) return;
   if(!comp) comp = compile(state, source);
+  const B = state.binoc;
+  if(B.on && !comp2){ const e2 = otherEye(state.profile.eye); comp2 = compile({...state, conditions: B.eyes[e2], profile: {...state.profile, eye: e2}}, source); }
   const t = state.scene.live ? (now - t0)/1000 : freezeT;
   const dt = lastT ? Math.min(0.1, (now - lastT)/1000) : 1/60; lastT = now;
   if(source.kind === 'video' && source.video && source.video.readyState >= 2 && (source.newFrame || !source.video.requestVideoFrameCallback)){
@@ -285,18 +313,32 @@ function frame(now){
     uploadSource(w); source.needsPyr = true; source.newFrame = false;
   }
   if(source.needsPyr){ buildPyramid(); source.needsPyr = false; }
-  renderMain(t);
-  renderTemporal(anim ? dt : 0);
+  if(B.on){
+    const cur = state.profile.eye;
+    renderMain(t, comp, dogTex, cur); renderMain(t, comp2, dogTex2, otherEye(cur));
+    const texL = cur === 'OS' ? dogTex : dogTex2, texR = cur === 'OS' ? dogTex2 : dogTex;
+    const loadL = condLoad(B.eyes.OS), loadR = condLoad(B.eyes.OD);
+    const wR = loadR <= loadL ? B.dom : 1 - B.dom;  // the clearer eye leads in the overlap
+    const p = progs.blend; gl.useProgram(p); bindTarget(blendTex, 0, W, H);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texL); setI(p, 'uL', 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texR); setI(p, 'uR', 1);
+    setU(p, 'uHalfX', state.scene.hfov/2); setU(p, 'uBino', comp.derived.binocular_overlap_deg/2); setU(p, 'uWR', wR);
+    draw(); gl.activeTexture(gl.TEXTURE0);
+    renderTemporal(anim ? dt : 0, blendTex);
+  } else {
+    renderMain(t, comp, dogTex, state.profile.eye);
+    renderTemporal(anim ? dt : 0, dogTex);
+  }
   renderDisplay();
   dirty = false; resized = false;
 }
-function renderMain(t){
+function renderMain(t, comp, target, eye){
   const p = progs.main, U = comp.U, S = state.scene; gl.useProgram(p);
-  bindTarget(dogTex, 0, W, H);
+  bindTarget(target, 0, W, H);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, pyr); setI(p, 'uPyr', 0);
   const ppd = W/S.hfov;
   setU(p, 'uLevels', levels); setU(p, 'uAS', AS); setU(p, 'uSize', [W, H]); setU(p, 'uPPD', ppd);
-  setU(p, 'uHalf', [S.hfov/2, S.hfov*H/W/2]); setU(p, 'uTime', t); setU(p, 'uTS', state.profile.eye === 'OD' ? 1 : -1);
+  setU(p, 'uHalf', [S.hfov/2, S.hfov*H/W/2]); setU(p, 'uTime', t); setU(p, 'uTS', eye === 'OD' ? 1 : -1);
   for(const k of ['uAcu','uPeri','uTopo','uBlurG','uDev','uUlcer','uHaze','uCat','uCatTint','uSparkle','uContrast','uLocalDeg','uVeil','uBloom','uBloomDeg','uHalo','uTint','uRowL','uRod','uM','uDesat','uCsf','uTunnel','uArc','uStreak','uCurtain','uResid','uThird','uThirdTint','uNose','uLower','uNoise','uPart','uZone']) setU(p, k, U[k]);
   const m = U.uDog; gl.uniformMatrix3fv(p.loc('uDog'), false, [m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]]);
   const sc = new Float32Array(24); U.uScot.slice(0, 6).forEach((s, i) => sc.set(s, i*4)); gl.uniform4fv(p.loc('uScot[0]'), sc);
@@ -326,11 +368,11 @@ function renderMain(t){
   setU(p, 'uOverlay', state.view.overlay);
   draw();
 }
-function renderTemporal(dt){
+function renderTemporal(dt, cur){
   const p = progs.temp; gl.useProgram(p);
   const prev = hist[histIdx], next = hist[1 - histIdx];
   bindTarget(next, 0, W, H);
-  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, dogTex); setI(p, 'uCur', 0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, cur); setI(p, 'uCur', 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, prev); setI(p, 'uPrev', 1);
   let a = 1, sal = 0;
   if(dt > 0 && state.stages[11] && !source.resetHist){
@@ -459,6 +501,8 @@ function check(host, d){
   controls.push(() => { cb.checked = !!d.get(); }); controls[controls.length - 1](); return wrap;
 }
 function buildPanels(){
+  slider($('#binoSliders'), {label:'Clearer-eye dominance', conf:'S', min:0.5, max:1, step:0.01, get:() => state.binoc.dom, set:v => state.binoc.dom = v, fmt:v => Math.round(v*100) + '%',
+    hint:'How much the clearer eye leads where the two fields overlap. 50% is an even mix.'});
   // presets
   const ph = $('#presets');
   PRESETS.forEach(pr => { const b = document.createElement('button'); b.type = 'button'; b.className = 'preset'; b.dataset.id = pr.id;
@@ -549,7 +593,18 @@ function buildPipeline(){
     host.appendChild(b);
   });
 }
+function syncBino(){
+  const B = state.binoc;
+  $('#binoOn').checked = B.on; $('#binoCtl').hidden = !B.on;
+  $$('#eyeSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.eye === state.profile.eye)));
+  if(B.on){
+    const better = condLoad(B.eyes.OD) <= condLoad(B.eyes.OS) ? 'right' : 'left';
+    $('#binoNote').textContent = `Editing the ${state.profile.eye === 'OS' ? 'left' : 'right'} eye. The ${better} eye currently looks clearer, so it leads in the binocular zone (±${Math.round((comp ? comp.derived.binocular_overlap_deg : 50)/2)}°). Each side crescent shows only that eye. A photo narrower than the overlap sits entirely in the blended zone.`;
+  }
+  $('#tagR').textContent = B.on ? 'Dog · both eyes' : 'Dog';
+}
 function markPreset(){
+  syncBino();
   $$('#presets .preset').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === state.preset)));
   const pr = PRESETS.find(p => p.id === state.preset), b = BREEDS[state.profile.breed];
   $('#presetName').textContent = pr ? pr.name : `${b ? b.name : 'Custom dog'}, ${fmtAge(state.profile.age_years)}`;
@@ -658,6 +713,8 @@ document.addEventListener('pointerdown', e => { if(!e.target.closest('.menu, #sr
 document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeMenus(); setDrawer(false); } });
 $('#srcMenu').addEventListener('click', e => { if(e.target.closest('#samples button, #camlive')) closeMenus(); });
 ['#file', '#cam'].forEach(s => $(s).addEventListener('change', () => closeMenus()));
+$('#binoOn').addEventListener('change', e => setBinoc(e.target.checked));
+$$('#eyeSeg button').forEach(x => x.addEventListener('click', () => editEye(x.dataset.eye)));
 $('#hudToggle').addEventListener('change', e => { state.view.hud = e.target.checked; scheduleUI(); });
 $('#camlive').onclick = () => { if(!source.live) startCamera(); };
 $('#camflip').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; startCamera(); };

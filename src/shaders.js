@@ -307,6 +307,21 @@ void main(){
   o = vec4(mix(p, c, uA), 1.0);
 }`;
 
+// Two eyes -> one view. Image left is the dog's left. Each monocular crescent shows only its own eye;
+// in the binocular zone the clearer eye dominates and the cloudier eye still adds some veil.
+const FS_BLEND = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uL; uniform sampler2D uR; uniform float uHalfX; uniform float uBino; uniform float uWR;
+void main(){
+  float az = (vUv.x - 0.5)*2.0*uHalfX;       // degrees from straight ahead, + to the dog's right
+  float e = 3.0;                             // soft zone edge, degrees
+  float inL = 1.0 - smoothstep(uBino - e, uBino + e, az);   // left eye covers up to +B/2
+  float inR = smoothstep(-uBino - e, -uBino + e, az);       // right eye covers from -B/2
+  float wR = inR*mix(1.0, uWR, inL);         // right only: 1, left only: 0, overlap: dominance
+  vec3 l = texture(uL, vUv).rgb, r = texture(uR, vUv).rgb;
+  o = vec4(mix(l, r, wR), 1.0);
+}`;
+
 const FS_DISPLAY = `#version 300 es
 precision highp float; in vec2 vUv; out vec4 o;
 uniform sampler2D uDogT; uniform sampler2D uSrcT;
