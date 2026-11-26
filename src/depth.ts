@@ -123,10 +123,15 @@ async function loadSession() {
 	const model = new Uint8Array(await response.arrayBuffer());
 	const create = (executionProviders: string[]) =>
 		ort.InferenceSession.create(model, { executionProviders });
-	const session = await create(["webgpu", "wasm"]).catch(() =>
-		create(["wasm"]),
-	);
-	return { session, Tensor: ort.Tensor };
+	let provider = "WebGPU";
+	let session: Session;
+	try {
+		session = await create(["webgpu"]);
+	} catch {
+		provider = "WASM";
+		session = await create(["wasm"]);
+	}
+	return { session, Tensor: ort.Tensor, provider };
 }
 let sessionLoading: ReturnType<typeof loadSession> | undefined;
 
@@ -140,12 +145,13 @@ export async function estimatePhotoDepth(
 			sessionLoading = undefined;
 			throw cause;
 		});
-		const { session, Tensor } = await sessionLoading;
+		const { session, Tensor, provider } = await sessionLoading;
 		onProgress?.("Estimating depth…");
 		// Let the status paint before the synchronous preprocessing.
 		await new Promise<void>((resolve) =>
 			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
 		);
+		const started = performance.now();
 		const { width, height } = sourceCanvas;
 		const { data } = sourceCanvas
 			.getContext("2d")!
@@ -168,7 +174,14 @@ export async function estimatePhotoDepth(
 				const pixels = context.createImageData(w!, h!);
 				pixels.data.set(normalizeDepthMap(output.data, w!, h!));
 				context.putImageData(pixels, 0, 0);
-				return { canvas, nearM: 0.4, farM: 25, kind: "estimated" };
+				const elapsedMs = Math.round(performance.now() - started);
+				return {
+					canvas,
+					nearM: 0.4,
+					farM: 25,
+					kind: "estimated",
+					detail: `Depth Anything V2 · ${provider} (${elapsedMs} ms)`,
+				};
 			} finally {
 				output.dispose();
 			}

@@ -28,6 +28,9 @@ let renderer: DogsightGL | undefined;
 let sourcePending = true;
 let freezeTime = 3.7;
 let lastTick = 0;
+let renderMs = 0;
+let smoothedFps = 0;
+let lastStatsAt = 0;
 let adaptedLogL = state.scene.logL;
 const estimating = new WeakSet<MediaSource>();
 const startTime = performance.now();
@@ -212,6 +215,7 @@ function frame(now: number, probe?: { dt: number; upload: boolean }) {
 	if (!dirty && !animated && !decoded) return;
 	const time = scene.live ? (now - startTime) / 1000 : freezeTime;
 	const dt = probe?.dt ?? (scene.live ? Math.min(0.1, elapsed) : 0);
+	const renderStart = performance.now();
 	renderer.render(
 		state,
 		model,
@@ -223,6 +227,24 @@ function frame(now: number, probe?: { dt: number; upload: boolean }) {
 		panorama(),
 	);
 	renderer.display(state, viewport.rect, viewport.background);
+	renderMs = performance.now() - renderStart;
+	if (animated || decoded) {
+		const instantFps = elapsed > 0 ? Math.min(240, 1 / elapsed) : 0;
+		smoothedFps = smoothedFps
+			? smoothedFps * 0.85 + instantFps * 0.15
+			: instantFps;
+	} else {
+		smoothedFps = 0;
+	}
+	if (state.view.stats && (dirty || now - lastStatsAt >= 250)) {
+		lastStatsAt = now;
+		ui.updateStats(model, adaptedLogL, {
+			...renderer.stats,
+			renderMs,
+			fps: smoothedFps,
+			animated: Boolean(animated || decoded),
+		});
+	}
 	viewport.placeControls();
 	dirty = resetHistory = false;
 }

@@ -76,6 +76,7 @@ export function createState(): AppState {
 			cy: 0.5,
 			overlay: 0,
 			hud: false,
+			stats: false,
 		},
 		preset: "lab",
 		binoc: { on: false, dom: 0.75 },

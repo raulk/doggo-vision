@@ -100,7 +100,8 @@ try {
 	});
 
 	const captureStyle = await page.addStyleTag({
-		content: ".bar,#hud,.split,.tag { visibility: hidden !important; }",
+		content:
+			".bar,#hud,#statsPanel,.split,.tag { visibility: hidden !important; }",
 	});
 	mkdirSync(out, { recursive: true });
 

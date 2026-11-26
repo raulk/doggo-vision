@@ -72,6 +72,7 @@ export class DogsightGL {
 	private width = 0;
 	private height = 0;
 	private rendered = false;
+	private gpuRenderer = "WebGL2";
 	available = false;
 
 	constructor(
@@ -106,6 +107,14 @@ export class DogsightGL {
 
 	private initialize() {
 		const { gl } = this;
+		const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+		const rawRenderer = dbg
+			? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)
+			: gl.getParameter(gl.RENDERER);
+		this.gpuRenderer =
+			typeof rawRenderer === "string" && rawRenderer.trim()
+				? rawRenderer.trim()
+				: "WebGL2";
 		this.floatReadback = !!gl.getExtension("EXT_color_buffer_float");
 		this.floatRT =
 			this.floatReadback || !!gl.getExtension("EXT_color_buffer_half_float");
@@ -139,6 +148,15 @@ export class DogsightGL {
 		this.pyramidDirty = true;
 		this.rendered = false;
 		this.available = true;
+	}
+
+	get stats() {
+		return {
+			floatRT: this.floatRT,
+			inputP3: this.inputP3,
+			levels: this.levels,
+			renderer: this.gpuRenderer,
+		};
 	}
 
 	private program(fragment: string, label: string): Program {

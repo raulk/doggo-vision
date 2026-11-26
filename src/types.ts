@@ -75,6 +75,16 @@ export interface ViewState {
 	cy: number;
 	overlay: number;
 	hud: boolean;
+	stats: boolean;
+}
+export interface RendererStats {
+	floatRT: boolean;
+	inputP3: boolean;
+	levels: number;
+	renderer: string;
+	renderMs: number;
+	fps: number;
+	animated: boolean;
 }
 export interface BinocState {
 	on: boolean;
@@ -193,6 +203,7 @@ export interface DepthMap {
 	kind: "procedural" | "embedded" | "estimated";
 	metric?: boolean;
 	label?: string;
+	detail?: string;
 }
 export interface EmbeddedDepthInfo {
 	format: "apple-jpeg" | "apple-heic" | "gdepth";
@@ -221,6 +232,7 @@ export interface PhotoMetadata {
 	orientation?: Orientation;
 	gainMap?: GainMapInfo;
 	embeddedDepth?: EmbeddedDepthInfo;
+	depthError?: string;
 }
 export interface SourceMeta {
 	panorama?: PanoramaInfo;

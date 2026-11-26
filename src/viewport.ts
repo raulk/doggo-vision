@@ -275,10 +275,17 @@ export class DogsightViewport {
 			},
 			{ passive: false },
 		);
-		vp.addEventListener("dblclick", () => {
+		vp.addEventListener("dblclick", (event) => {
+			event.preventDefault();
 			if (this.actions.panoramaField()) this.center();
 			else this.zoomAt(1);
 		});
+		// Prevent iOS Safari page-level gesture zoom so the fixed chrome cannot get stuck zoomed in.
+		document.addEventListener(
+			"gesturestart",
+			(event) => event.preventDefault(),
+			{ passive: false },
+		);
 		$("#zin").onclick = () => this.zoomAt(view.zoom * 1.5);
 		$("#zout").onclick = () => this.zoomAt(view.zoom / 1.5);
 		$("#zlabel").onclick = () => this.zoomAt(1);

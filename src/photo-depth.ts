@@ -893,6 +893,31 @@ export async function decodeEmbeddedDepth(
 		const pixels = ctx.getImageData(0, 0, w, h);
 		pixels.data.set(normalizeEmbeddedDepthPixels(pixels.data, info));
 		ctx.putImageData(pixels, 0, 0);
+		const container =
+			info.format === "apple-jpeg"
+				? "MPF JPEG"
+				: info.format === "apple-heic"
+					? "HEIC auxC"
+					: "GDepth XMP";
+		const encoding =
+			info.format === "gdepth"
+				? info.representation === "linear"
+					? "RangeLinear"
+					: "RangeInverse"
+				: info.representation === "linear"
+					? info.floatMin !== undefined && info.floatMax !== undefined
+						? `linear ${info.floatMin.toFixed(2)}–${info.floatMax.toFixed(2)} m`
+						: "linear depth"
+					: info.floatMin !== undefined && info.floatMax !== undefined
+						? `disparity ${info.floatMin.toFixed(2)}–${info.floatMax.toFixed(2)} m⁻¹`
+						: "disparity";
+		const detail = [
+			container,
+			encoding,
+			transform !== 1 ? `rot ${transform}` : "",
+		]
+			.filter(Boolean)
+			.join(" · ");
 		return {
 			canvas,
 			nearM: info.nearM,
@@ -900,6 +925,7 @@ export async function decodeEmbeddedDepth(
 			kind: "embedded",
 			metric: info.metric,
 			label: info.label,
+			detail,
 		};
 	} finally {
 		bitmap.close();

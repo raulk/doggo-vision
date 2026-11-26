@@ -220,7 +220,8 @@ export class DogsightMedia {
 					canvas.width,
 					canvas.height,
 				);
-			} catch {
+			} catch (error) {
+				photo.depthError = `${photo.embeddedDepth.label} (${photo.embeddedDepth.format}) decode failed: ${errorMessage(error)}`;
 				photo.embeddedDepth = undefined;
 			}
 		}

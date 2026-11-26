@@ -4,6 +4,8 @@ A browser simulator of how a dog sees: dichromat colour, low acuity that depends
 
 **Try it:** https://raulk.github.io/dogsight/ (on a phone, open **Source → Live camera**).
 
+**Runs 100% locally — nothing is uploaded.** Photos, videos, live camera frames, EXIF metadata and imported JSON are processed entirely in your browser and never leave your device. If you opt into AI depth estimation on a photo without embedded depth, your browser downloads the ONNX Runtime and Depth Anything V2 weights on demand and runs inference locally on your device.
+
 ![A garden split in two: the human view on the left, and the same garden through a 15-year-old dog's eyes on the right](docs/images/yard-split-senior.jpg)
 
 > **This is an estimate, not a diagnosis.** No dog can tell us what it sees. The simulator models the optics and retina of the eye from published measurements, and fills the gaps with human data and engineering estimates, which are labelled as such. It cannot tell you what your dog sees, and it is not veterinary advice. If you are worried about your dog's eyes, see a vet. A red, cloudy, painful eye with a dilated pupil needs urgent care.
@@ -21,15 +23,15 @@ A browser simulator of how a dog sees: dichromat colour, low acuity that depends
 - **Age and disease:** 25 conditions along the light path, from dry eye and corneal haze to cataract, glaucoma and retinal atrophy. Each has a 0–1 severity.
 - **Both eyes.** Each eye stores its own conditions, iris colour and refraction. Measured total refraction bypasses the nuclear-sclerosis offset. In the overlap, the optically clearer eye leads the blend.
 
-Uploaded photos can supply camera and lens details, field of view, scene luminance and subject distance through EXIF, XMP and ICC metadata. Flash exposures are shown in the Scene tab and leave the light-level setting as it was. Supported JPEG gain maps (ISO 21496-1, Ultra HDR and Apple) reconstruct linear HDR radiance for the direct view, glare and bloom. Where Display P3 canvas support is available, P3 photos keep their wider gamut in the floating-point rendering pipeline. Image decoding, including HEIC, depends on the browser.
+Photos you open can supply camera and lens details, field of view, scene luminance and subject distance through EXIF, XMP and ICC metadata. Flash exposures are shown in the Scene tab and leave the light-level setting as it was. Supported JPEG gain maps (ISO 21496-1, Ultra HDR and Apple) reconstruct linear HDR radiance for the direct view, glare and bloom. Where Display P3 canvas support is available, P3 photos keep their wider gamut in the floating-point rendering pipeline. Image decoding, including HEIC, depends on the browser.
 
 **Panoramas.** Open **Source → 360° park** and drag to look around. Auto projection recognizes full and cropped GPano images and infers cylindrical projection for wide photos. Change **Scene → Projection** to override it. The panorama spans the dog's anatomical field, about 200° for Pug and 270° for Greyhound. **View → Field zones** marks the binocular overlap. Double-click or use **Center view** to reset the heading.
 
-**Depth and focus.** Turn on **Scene → Per-pixel depth defocus**, then Shift-click or tap an object to focus at its distance. **View → Depth map** shows the inverse-depth texture. The samples have offline procedural depth, including the flat 3 m vision chart. For uploaded photos, Dogsight estimates relative depth on the device with [Depth Anything V2 Small (Apache 2.0)](https://huggingface.co/onnx-community/depth-anything-v2-small). The first estimate downloads ONNX Runtime Web and the quantized model on demand. The browser caches the model where it supports Cache Storage. Use the near and far controls to calibrate relative depth to approximate distances.
+**Depth and focus.** Open the **Depth** button in the top-right bar to toggle **Per-pixel depth defocus**, adjust **Focus distance**, inspect the **Depth map** overlay, or calibrate near and far distances. Shift-click or tap an object to focus at its distance. The samples have offline procedural depth, including the flat 3 m vision chart. Local iPhone Portrait JPEGs (MPF + Apple XMP disparity/depth), iPhone Portrait HEICs (`auxC` auxiliary depth where the browser decodes HEIC), and Android/Pixel `GDepth` JPEGs extract embedded depth automatically and calibrate near/far distances when metric metadata is present. For photos without embedded depth, Dogsight can estimate relative depth on the device with [Depth Anything V2 Small (Apache 2.0)](https://huggingface.co/onnx-community/depth-anything-v2-small), downloading ONNX Runtime Web and the quantized model on demand and caching it in Cache Storage.
 
 **Time and light.** The sustained channel integrates the image over time. A separate 25 ms channel accents moving edges in video and cancels the motion accent for uniform flashes. **Scene → Dark adaptation** lets you watch retinal sensitivity recover at 60× speed or in real time. **Snap adapted** jumps to the steady state.
 
-The default preset, **Senior, 15: both eyes**, is based on a 15-year-old dog with dry eye, a cloudy left cornea and an ageing lens. The browser probes check the preset’s simulated blur and glare against renderer regression targets.
+Dogsight opens on **Adult Labrador** as a healthy baseline. The **Senior, 15: both eyes** preset models a 15-year-old dog with dry eye, a cloudy left cornea and an ageing lens; the browser probes check both presets' simulated blur and glare against renderer regression targets.
 
 ## How accurate is it?
 
@@ -71,14 +73,22 @@ Open `site/index.html` directly or serve it with `python3 -m http.server -d site
 
 - `index.html` and `src/styles.css` define the interface. `src/main.ts` wires together the UI, viewport, media and renderer.
 - `src/model.ts` compiles each eye's optics from `src/state.ts`. `src/gl.ts` applies `src/shaders.ts` in WebGL2.
-- `src/metadata.ts` reads photo metadata and gain maps. `src/samples.ts` supplies the procedural scenes.
+- `src/metadata.ts` and `src/photo-depth.ts` read EXIF/XMP metadata, HDR gain maps and embedded portrait depth maps. `src/depth.ts` runs optional on-device depth estimation. `src/samples.ts` supplies the procedural scenes.
 - `tests/` contains unit tests and Chromium realism probes.
 - `docs/`: decisions, unknowns and research.
 - `.github/workflows/pages.yml`: publishes `site/` to GitHub Pages.
 
-### How it works
+## Shader pipeline
 
-The WebGL2 pipeline uses rectilinear camera projection for photos and video, with local pixel scales derived from visual angle. It combines angular optical blur with a Gaussian mip pyramid and applies pupil-plane attenuation to the direct image, glare, bloom and halos. Retinal contrast sensitivity uses five Laplacian bands, and low-light rod noise uses angular pooling cells that grow toward the periphery. Use **Settings → Pipeline** to isolate stages. The **Settings → Data** tab imports eye-photo detector output and exports the profile, condition hypotheses and shader parameters as JSON.
+Dogsight simulates canine vision in real time in the browser using a multi-pass WebGL2 optical pipeline (`src/shaders.ts`, orchestrated by `src/gl.ts`) parameterized by a dog's breed, age, skull shape, lighting and eye conditions. When you load a photo, video, 360° panorama or live camera feed, it reads EXIF/HDR gain-map metadata and any embedded portrait depth map (or estimates depth on-device with Depth Anything V2), linearizes the scene radiance, and builds a multi-scale blur pyramid. For each pixel—and independently for each eye in binocular mode—the main shader projects field angles (rectilinear for photos and video, spherical for panoramas) to scale acuity and visual-streak or area-centralis blur, computes per-pixel diopter defocus from the dog's limited (~2–3 D) accommodation and pupil diameter, attenuates and scatters light through anterior media (tear film, corneal opacity, lens haze, veiling glare, bloom and halos), converts colour to canine blue–yellow dichromacy or rod-dominated night vision with five-band Laplacian contrast sensitivity, angular rod noise, tapetal boost and biphasic dark adaptation, applies retinal/neural field defects, and runs separate sustained and transient temporal filters for motion sensitivity and low-light smear.
+
+The rendering runs on the GPU as chained WebGL2 passes rather than a single fragment shader for three reasons:
+
+1. **Wide blur, veiling glare and motion need multiple shader passes.** Sampling a 20°+ glare tail or five spatial-frequency CSF bands in one fragment pass would require thousands of texture taps per pixel, and a single stateless pass has no memory of previous frames. Dogsight therefore chains focused GPU passes over floating-point framebuffers: `FS_PANO` (reprojection) → `FS_LINEARIZE` (HDR/Display P3 radiance) → `FS_DOWN` (Gaussian mip pyramid) → `FS_MAIN` (optics, defocus, colour, retina) → `FS_TEMPORAL` (ping-pong sustained/transient history) → `FS_BLEND` (binocular merge) → `FS_DISPLAY`.
+2. **Monocular depth estimation cannot be done by a local pixel shader.** When a photo has no embedded hardware depth map, inferring near versus far requires global scene understanding (objects, occlusion, perspective). That uses a neural network (Depth Anything V2 Small via ONNX Runtime Web, which executes on WebGPU compute shaders where available and falls back to WASM).
+3. **Container parsing and biology math run once per photo or setting.** Parsing EXIF, HDR gain maps and MPF/HEIC depth containers—and compiling breed, age and eye-condition parameters into uniform values—runs on the CPU so the GPU passes stay fast at 60 fps.
+
+Use **Settings → Pipeline** to isolate individual optical stages, and **Settings → Data** to import eye-photo detector output or export the profile, condition hypotheses and shader parameters as JSON.
 
 ## Realism tests
 
