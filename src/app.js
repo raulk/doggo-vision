@@ -11,11 +11,12 @@ const state = {
   vision: {...VISION_DEFAULTS},
   scene: {logL:2.8, hfov:50, dist:6, nose:false, live:true, flicker:false},
   stages: STAGES.map(() => true),
-  view: {mode:0, split:0.5, zoom:1, cx:0.5, cy:0.5, overlay:0},
+  view: {mode:0, split:0.5, zoom:1, cx:0.5, cy:0.5, overlay:0, hud:false},
   preset: 'lab',
 };
 
 const PRESETS = [
+  {id:'kcs15', name:'Senior, 15, dry eye', note:'Dry eye, corneal pigment and lens fog (not cataract)', p:['mixed', 15], prof:{lifespan_years:14}, c:{kcs:{s:0.5, x:{chronic:false, blink:6, tbu:4, mucus:0.5, squint:0.35}}, pigmentary_keratitis:{s:0.3, x:{origin:'medial'}}, nuclear_sclerosis:{s:0.7}}},
   {id:'puppy3', name:'Puppy, 3 weeks', note:'Eyes just open, retina maturing', p:['labrador', 3/52]},
   {id:'puppy10', name:'Puppy, 10 weeks', note:'Near-adult optics', p:['labrador', 10/52]},
   {id:'lab', name:'Adult Labrador', note:'Baseline: dichromat, 20/75', p:['labrador', 4]},
@@ -312,7 +313,7 @@ function renderMain(t){
     const sk = ks.sigmaMax*ks.s*dry;
     blurG = Math.sqrt(blurG*blurG + sk*sk);
     warp = [fracB(0.015)*ks.s*dry, 3, t*0.6];
-    mucus = 0.35*ks.s*(0.4 + 0.6*dry);
+    mucus = 0.7*ks.mucus*ks.s*(0.4 + 0.6*dry);
   }
   setU(p, 'uBlurG', blurG); setU(p, 'uWarp', warp); setU(p, 'uMucus', mucus);
   const lid = U.uLid.slice(); lid[3] = state.stages[2] ? blink : 0; setU(p, 'uLid', lid);
@@ -547,7 +548,11 @@ function buildPipeline(){
     host.appendChild(b);
   });
 }
-function markPreset(){ $$('#presets .preset').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === state.preset))); }
+function markPreset(){
+  $$('#presets .preset').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === state.preset)));
+  const pr = PRESETS.find(p => p.id === state.preset), b = BREEDS[state.profile.breed];
+  $('#presetName').textContent = pr ? pr.name : `${b ? b.name : 'Custom dog'}, ${fmtAge(state.profile.age_years)}`;
+}
 function syncAll(){ baseControls.forEach(f => f()); buildConditions(); markPreset(); }
 
 // spectrum strips: approximate spectral colours, then the dog matrix
@@ -592,7 +597,8 @@ function updateUI(){
   const cpd = d.acuity_cpd_centre;
   const ov = state.view.overlay === 1 ? `<span class="chip">Acuity map: <b>blue</b> 2 cpd or less, <b>gold</b> 16 cpd, a line at each doubling</span>`
     : state.view.overlay === 2 ? `<span class="chip">Dashed lines: binocular zone ±${Math.round(d.binocular_overlap_deg/2)}°${comp.U.uTunnel[0] < 179 ? ' · blue ring: remaining field' : ''}</span>` : '';
-  $('#hud').innerHTML = ov + `<span class="chip">${regime}${m >= 0.05 ? ` · rods <b>${Math.round(m*100)}%</b>` : ''}</span><span class="chip">Centre <b>${cpd} cpd</b> · 20/${Math.round(600/Math.max(cpd, 0.1))}</span><span class="chip">${(W/state.scene.hfov).toFixed(0)} px/°</span>`;
+  const hud = $('#hud'); hud.hidden = !(state.view.hud || ov);
+  hud.innerHTML = ov + (!state.view.hud ? '' : `<span class="chip">${regime}${m >= 0.05 ? ` · rods <b>${Math.round(m*100)}%</b>` : ''}</span><span class="chip">Centre <b>${cpd} cpd</b> · 20/${Math.round(600/Math.max(cpd, 0.1))}</span><span class="chip">${(W/state.scene.hfov).toFixed(0)} px/°</span>`);
   const n = CONDS.filter(c => state.conditions[c.id].on).length;
   $('#ccount').hidden = n === 0; $('#ccount').textContent = n;
   const si = $('#srcinfo'); if(si) si.textContent = `Source: ${source.name || 'sample'} · ${W}×${H} px${source.kind === 'video' ? ' · video' : ''}.`;
@@ -613,12 +619,12 @@ function arcPath(cx, cy, r, a0, a1){ // angles in degrees, 0 = straight ahead (u
 function drawFov(F, B){
   const svg = $('#fovsvg'), cx = 80, cy = 84, r = 70;
   svg.innerHTML = `
-    <path d="${arcPath(cx, cy, r, F/2, 360 - F/2)}" fill="var(--sunken)" stroke="var(--line)"/>
-    <path d="${arcPath(cx, cy, r, -F/2, F/2)}" fill="var(--dogblue)" fill-opacity="0.22" stroke="var(--dogblue)" stroke-opacity="0.5"/>
-    <path d="${arcPath(cx, cy, r, -B/2, B/2)}" fill="var(--dogyellow-fill)" fill-opacity="0.75"/>
+    <path d="${arcPath(cx, cy, r, F/2, 360 - F/2)}" fill="var(--glass-2)" stroke="var(--line)"/>
+    <path d="${arcPath(cx, cy, r, -F/2, F/2)}" fill="var(--fg)" fill-opacity="0.12" stroke="var(--fg)" stroke-opacity="0.35"/>
+    <path d="${arcPath(cx, cy, r, -B/2, B/2)}" fill="var(--fg)" fill-opacity="0.55"/>
     <ellipse cx="${cx}" cy="${cy + 4}" rx="11" ry="15" fill="var(--fg)"/>
     <ellipse cx="${cx}" cy="${cy - 12}" rx="5" ry="7" fill="var(--fg)"/>`;
-  $('#fovlegend').innerHTML = `<div><i style="background:var(--dogyellow-fill)"></i>Binocular ${B}°</div><div><i style="background:var(--dogblue);opacity:.5"></i>Total field ${F}°</div><div><i style="background:var(--sunken);border:1px solid var(--line)"></i>Blind behind ${360 - F}°</div><div style="color:var(--muted)">Field sizes by skull type are working values with no primary source.</div>`;
+  $('#fovlegend').innerHTML = `<div><i style="background:var(--fg);opacity:.55"></i>Binocular ${B}°</div><div><i style="background:var(--fg);opacity:.15;border:1px solid var(--fg)"></i>Total field ${F}°</div><div><i style="background:var(--glass-2);border:1px solid var(--line)"></i>Blind behind ${360 - F}°</div><div style="color:var(--muted)">Field sizes by skull type are working values with no primary source.</div>`;
 }
 
 // tabs
@@ -633,6 +639,25 @@ $$('#samples button').forEach(b => b.addEventListener('click', () => loadSample(
 $('#file').addEventListener('change', e => { loadFile(e.target.files[0]).catch(err => toast(err.message)); e.target.value = ''; });
 $('#cam').addEventListener('change', e => { loadFile(e.target.files[0]).catch(err => toast(err.message)); e.target.value = ''; });
 if(COARSE) $('#camlabel').hidden = false;
+const MENUS = {srcBtn:'srcMenu', viewBtn:'viewMenu'};
+function closeMenus(except){ Object.entries(MENUS).forEach(([b, mn]) => { if(b === except) return; $('#' + mn).hidden = true; $('#' + b).setAttribute('aria-expanded', 'false'); }); }
+function setDrawer(open, tab){
+  const d = $('#drawer'); d.hidden = !open; $('#menuBtn').setAttribute('aria-expanded', String(open)); $('#app').classList.toggle('drawer-open', open);
+  if(open){ closeMenus(); if(tab) $(`#tabs button[data-tab="${tab}"]`).click(); }
+}
+Object.entries(MENUS).forEach(([b, mn]) => $('#' + b).addEventListener('click', e => {
+  e.stopPropagation(); const open = $('#' + mn).hidden; closeMenus(b);
+  $('#' + mn).hidden = !open; $('#' + b).setAttribute('aria-expanded', String(open));
+  if(open && matchMedia('(max-width:700px)').matches) setDrawer(false);
+}));
+$('#menuBtn').addEventListener('click', () => setDrawer($('#drawer').hidden));
+$('#presetBtn').addEventListener('click', () => { const d = $('#drawer'), onDog = $('#tabs button[data-tab="dog"]').getAttribute('aria-selected') === 'true'; setDrawer(d.hidden || !onDog, 'dog'); });
+$('#drawerClose').addEventListener('click', () => setDrawer(false));
+document.addEventListener('pointerdown', e => { if(!e.target.closest('.menu, #srcBtn, #viewBtn')) closeMenus(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeMenus(); setDrawer(false); } });
+$('#srcMenu').addEventListener('click', e => { if(e.target.closest('#samples button, #camlive')) closeMenus(); });
+['#file', '#cam'].forEach(s => $(s).addEventListener('change', () => closeMenus()));
+$('#hudToggle').addEventListener('change', e => { state.view.hud = e.target.checked; scheduleUI(); });
 $('#camlive').onclick = () => { if(!source.live) startCamera(); };
 $('#camflip').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; startCamera(); };
 $('#camstop').onclick = () => { loadSample('yard'); };

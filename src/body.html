@@ -1,73 +1,87 @@
-<div class="app">
-  <header class="top">
-    <div class="brand">
-      <div class="mark" aria-hidden="true"></div>
-      <div>
-        <h1>Doggo Vision Lab</h1>
-        <p>An illustration built from the research catalog. Not a measured percept and not a diagnosis.</p>
-      </div>
-    </div>
-    <div class="tools">
-      <div class="seg" role="group" aria-label="Sample scenes" id="samples">
-        <button type="button" data-sample="yard" aria-pressed="true">Backyard</button>
-        <button type="button" data-sample="street" aria-pressed="false">Night street</button>
-        <button type="button" data-sample="chart" aria-pressed="false">Vision chart</button>
-      </div>
-      <label class="btn" for="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 4v12"/><path d="m7 9 5-5 5 5"/></svg>Photo or video</label>
-      <input type="file" id="file" accept="image/*,video/*" class="vh">
-      <label class="btn" for="cam" id="camlabel" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
-      <input type="file" id="cam" accept="image/*" capture="environment" class="vh">
-      <button type="button" class="btn" id="camlive" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>Live camera</button>
-      <button type="button" class="btn" id="camflip" hidden>Switch camera</button>
-      <button type="button" class="btn" id="vidplay" hidden>Pause</button>
-      <button type="button" class="btn" id="camstop" hidden>Stop</button>
-      <div class="seg" role="group" aria-label="View" id="viewmode">
-        <button type="button" data-mode="0" aria-pressed="true">Split</button>
-        <button type="button" data-mode="1" aria-pressed="false">Dog</button>
-        <button type="button" data-mode="2" aria-pressed="false">Human</button>
-      </div>
-      <select class="sel" id="overlay" aria-label="Overlay">
-        <option value="0">No overlay</option>
-        <option value="1">Acuity map</option>
-        <option value="2">Field zones</option>
-      </select>
-      <button type="button" class="btn" id="save" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Save dog view</button>
+<div class="app" id="app">
+  <div class="viewport" id="vp">
+    <canvas id="gl"></canvas>
+    <div class="split" id="split"><div class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg></div></div>
+    <span class="tag l" id="tagL">Human · same light</span>
+    <span class="tag r" id="tagR">Dog</span>
+    <div class="drop" id="drop" hidden>Drop a photo or video</div>
+  </div>
+
+  <header class="bar topbar">
+    <button type="button" class="title" id="presetBtn" aria-label="Choose a dog">
+      <small>Doggo Vision</small>
+      <span id="presetName">Adult Labrador</span>
+    </button>
+    <div class="icons">
+      <button type="button" class="ib" id="srcBtn" aria-haspopup="true" aria-expanded="false" title="Image source"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg><span class="ibl">Source</span></button>
+      <button type="button" class="ib" id="viewBtn" aria-haspopup="true" aria-expanded="false" title="View"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg><span class="ibl">View</span></button>
+      <button type="button" class="ib" id="save" hidden title="Save dog view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg><span class="ibl">Save</span></button>
+      <button type="button" class="ib" id="menuBtn" aria-expanded="false" aria-controls="drawer" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h4"/><path d="M12 17h8"/><circle cx="10" cy="17" r="2"/></svg><span class="ibl">Settings</span><span class="dot" id="ccount" hidden>0</span></button>
     </div>
   </header>
 
-  <main class="work">
-    <section class="stagecol">
-      <div class="viewport" id="vp">
-        <canvas id="gl"></canvas>
-        <div class="split" id="split"><div class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg></div></div>
-        <span class="tag l" id="tagL">Human · same light</span>
-        <span class="tag r" id="tagR">Dog</span>
-        <div class="urgent" id="urgent" hidden></div>
-        <div class="camnote" id="camnote" role="status" hidden></div>
-        <div class="hud" id="hud"></div>
-        <div class="zoom" aria-label="Zoom">
-          <button type="button" id="zout" aria-label="Zoom out">−</button>
-          <button type="button" id="zlabel" title="Fit to view">Fit</button>
-          <button type="button" id="z11" title="One image pixel per screen pixel">1:1</button>
-          <button type="button" id="zin" aria-label="Zoom in">+</button>
-        </div>
-        <div class="drop" id="drop" hidden>Drop a photo or video to see it as a dog would</div>
-      </div>
-      <div class="pipewrap">
-        <div class="pipehead"><span>Pipeline, in the order light travels</span><small id="pipenote">Tap a stage to bypass it</small></div>
-        <div class="pipe" id="pipe"></div>
-      </div>
-    </section>
+  <div class="menu" id="srcMenu" hidden>
+    <div class="mlabel">Sample scenes</div>
+    <div class="seg" role="group" aria-label="Sample scenes" id="samples">
+      <button type="button" data-sample="yard" aria-pressed="true">Backyard</button>
+      <button type="button" data-sample="street" aria-pressed="false">Night street</button>
+      <button type="button" data-sample="chart" aria-pressed="false">Vision chart</button>
+    </div>
+    <div class="mlabel">Your own</div>
+    <label class="mi" for="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 4v12"/><path d="m7 9 5-5 5 5"/></svg>Photo or video</label>
+    <input type="file" id="file" accept="image/*,video/*" class="vh">
+    <label class="mi" for="cam" id="camlabel" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take a photo</label>
+    <input type="file" id="cam" accept="image/*" capture="environment" class="vh">
+    <button type="button" class="mi" id="camlive" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>Live camera</button>
+  </div>
 
-    <aside class="panel">
+  <div class="menu" id="viewMenu" hidden>
+    <div class="mlabel">Compare</div>
+    <div class="seg" role="group" aria-label="View" id="viewmode">
+      <button type="button" data-mode="0" aria-pressed="true">Split</button>
+      <button type="button" data-mode="1" aria-pressed="false">Dog</button>
+      <button type="button" data-mode="2" aria-pressed="false">Human</button>
+    </div>
+    <div class="mlabel">Overlay</div>
+    <select class="sel" id="overlay" aria-label="Overlay">
+      <option value="0">None</option>
+      <option value="1">Acuity map</option>
+      <option value="2">Field zones</option>
+    </select>
+    <label class="mcheck"><input type="checkbox" id="hudToggle"> Show readouts</label>
+  </div>
+
+  <div class="bar bottombar">
+    <div class="hud" id="hud" hidden></div>
+    <div class="media">
+      <button type="button" class="pill" id="camflip" hidden>Flip</button>
+      <button type="button" class="pill" id="vidplay" hidden>Pause</button>
+      <button type="button" class="pill" id="camstop" hidden>Stop</button>
+    </div>
+    <div class="zoom" aria-label="Zoom">
+      <button type="button" id="zout" aria-label="Zoom out">−</button>
+      <button type="button" id="zlabel" title="Fit to view">Fit</button>
+      <button type="button" id="z11" title="One image pixel per screen pixel">1:1</button>
+      <button type="button" id="zin" aria-label="Zoom in">+</button>
+    </div>
+  </div>
+
+  <div class="urgent" id="urgent" hidden></div>
+  <div class="camnote" id="camnote" role="status" hidden></div>
+
+  <aside class="drawer" id="drawer" aria-label="Settings" hidden>
+    <div class="dhead">
       <div class="tabs" role="tablist" id="tabs">
         <button role="tab" aria-selected="true" data-tab="dog">Dog</button>
+        <button role="tab" aria-selected="false" data-tab="cond">Conditions</button>
         <button role="tab" aria-selected="false" data-tab="scene">Scene</button>
         <button role="tab" aria-selected="false" data-tab="vision">Vision</button>
-        <button role="tab" aria-selected="false" data-tab="cond">Conditions<span class="count" id="ccount" hidden>0</span></button>
+        <button role="tab" aria-selected="false" data-tab="pipe">Pipeline</button>
         <button role="tab" aria-selected="false" data-tab="data">Data</button>
       </div>
-
+      <button type="button" class="ib sm" id="drawerClose" aria-label="Close settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="dbody">
       <div class="pane" data-pane="dog">
         <h3>Presets</h3>
         <div class="presets" id="presets"></div>
@@ -123,7 +137,12 @@
         <h3>Shader parameters</h3>
         <div class="jsonbox"><button type="button" class="btn" data-copy="jShader">Copy</button><pre id="jShader"></pre></div>
       </div>
-    </aside>
-  </main>
+      <div class="pane" data-pane="pipe" hidden>
+        <p class="lede">The stages run in the order light travels through the eye. Tap one to switch it off and see what it contributes.</p>
+        <div class="pipe" id="pipe"></div>
+      </div>
+      <p class="foot">An illustration built from the research catalog. Not a measured percept and not a diagnosis.</p>
+    </div>
+  </aside>
 </div>
 <div class="toast" id="toast" hidden></div>

@@ -53,7 +53,7 @@ const CONDS = [
   {id:'cherry_eye', g:'adnexa', name:'Cherry eye', photo:'yes', d:'Prolapsed third-eyelid gland. A small soft occluder low on the nasal side.', s:0.5},
   {id:'entropion', g:'adnexa', name:'Entropion', photo:'yes', d:'Inrolled lid. Indirect effects: squint, tearing and a wet blur.', s:0.5},
   {id:'horner', g:'adnexa', name:'Horner syndrome', photo:'yes', d:'Small pupil, drooping upper lid and a raised third eyelid.', s:0.6},
-  {id:'kcs', g:'cornea', name:'Dry eye (KCS)', photo:'partly', d:'Tear film breaks up between blinks: blur grows, patches warp, mucus smears, bright light makes the dog squint. Animated.', s:0.5, extras:[{k:'chronic', t:'bool', label:'Chronic (adds pigment)'}]},
+  {id:'kcs', g:'cornea', name:'Dry eye (KCS)', photo:'partly', d:'Tear film breaks up between blinks: blur grows, patches warp, mucus smears, bright light makes the dog squint. Animated.', s:0.5, extras:[{k:'tbu', t:'num', label:'Tear break-up time', min:1, max:20, step:1, def:10, unit:' s'},{k:'blink', t:'num', label:'Time between blinks', min:2, max:15, step:1, def:6, unit:' s'},{k:'mucus', t:'num', label:'Mucus smear', min:0, max:1, step:0.01, def:0.5},{k:'squint', t:'num', label:'Squint in bright light', min:0, max:1, step:0.01, def:0.4},{k:'chronic', t:'bool', label:'Chronic (adds corneal pigment)'}]},
   {id:'pigmentary_keratitis', g:'cornea', name:'Pigmentary keratitis', photo:'yes', d:'Melanin on the cornea, usually from the nasal side, veiling the temporal field. Present in about 92% of UK pugs.', s:0.35, extras:[{k:'origin', t:'sel', label:'Starts from', opts:[['medial','Nasal cornea'],['temporal','Temporal cornea'],['diffuse','Diffuse']]}]},
   {id:'corneal_edema', g:'cornea', name:'Corneal edema', photo:'yes', d:'Blue-white corneal haze with coloured halos around lights.', s:0.5},
   {id:'corneal_ulcer', g:'cornea', name:'Corneal ulcer', photo:'partly', d:'Local haze and warp over the ulcer, tearing and a squint.', s:0.5},
@@ -240,7 +240,7 @@ function compile(state, srcInfo){
 
   // ---- apertures (lids)
   const bright = 0.4 + 0.6*(1 - m);
-  const sq = Math.max(0.4*kcs, 0.5*ulcer, 0.35*uve, 0.3*entro, 0.3*glS, 0.25*ia*(1 - m))*bright;
+  const sq = Math.max(kcs*ex('kcs', 'squint', 0.4), 0.5*ulcer, 0.35*uve, 0.3*entro, 0.3*glS, 0.25*ia*(1 - m))*bright;
   let lidTop = 0, lidBot = 0, third = 0, thirdTint = [0.95, 0.7, 0.7];
   if(on[2]){
     lidTop = sq*0.55 + 0.3*horner; lidBot = sq*0.45;
@@ -315,7 +315,7 @@ function compile(state, srcInfo){
     uGain: gain, uLower: lower, uNoise: noise, uPart: [part[0], part[1], 0],
     uZone: [B/2, F/2], occ,
   };
-  const kcsState = kcsOn ? {s:kcs, tbu: 20*(1 - kcs) + 1*kcs, interval: 6, sigmaMax: fracB(0.03)} : null;
+  const kcsState = kcsOn ? {s:kcs, tbu: ex('kcs', 'tbu', 20*(1 - kcs) + kcs), interval: ex('kcs', 'blink', 6), mucus: ex('kcs', 'mucus', 0.5), sigmaMax: fracB(0.03)} : null;
 
   const derived = {
     a: +a.toFixed(3), streak_strength: +s.toFixed(2), skull: skullOf(P.ci), field_total_deg: Math.round(F), binocular_overlap_deg: Math.round(B),
@@ -343,7 +343,7 @@ function compile(state, srcInfo){
     occluders: occ.map(o => ({kind:o.kind, field_wedge:{dir_deg: Math.round(Math.atan2(o.dir[1], o.dir[0])*180/Math.PI), edge_deg: +o.edge.toFixed(1), soft_deg:o.soft}, transmission: +(1 - o.dens).toFixed(2), tint_rgb:o.tint})),
     distortion: {amp_frac: kcsOn ? +(0.015*kcs).toFixed(4) : 0, freq: 3, time_varying: kcsOn},
     ghost: {alpha: +ghost[0].toFixed(2), offset_frac: [+(ghost[1]/REF_FOV).toFixed(3), +(ghost[2]/REF_FOV).toFixed(3)], blur_frac: +(ghost[3]/REF_BLUR).toFixed(4), wobble_hz: lux > 0 ? 3 : 0},
-    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: 6, sigma_max_frac: +(0.03*kcs).toFixed(3), mucus_alpha: +(0.35*kcs).toFixed(2)} : {enabled:false},
+    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: kcsState.interval, sigma_max_frac: +(0.03*kcs).toFixed(3), mucus_alpha: +(0.7*kcsState.mucus*kcs).toFixed(2)} : {enabled:false},
     aperture: {top: +lidTop.toFixed(2), bottom: +lidBot.toFixed(2), nasal_inferior: +third.toFixed(2), bright_squint: +sq.toFixed(2)},
     particles: {count: Math.round(part[0]*200), kind: part[0] > 0 ? (part[1] > 0.5 ? 'floater' : 'asteroid') : null, settle_s: 2.0},
     photophobia: {exposure_ev_bright: +ev.toFixed(2)},
@@ -368,7 +368,7 @@ function condHypotheses(state){
     if(c.id === 'cataract'){ o.stage = catStage(st.s, st.x.hypermature); o.type = st.x.type || 'cortical'; }
     if(c.id === 'glaucoma'){ o.damage = +(st.x.damage ?? 0.4).toFixed(2); o.acute = st.s > 0.5; }
     if(c.id === 'pigmentary_keratitis'){ o.origin = st.x.origin || 'medial'; o.maini_score_est = +(st.s*14).toFixed(1); }
-    if(c.id === 'kcs') o.chronic = !!st.x.chronic;
+    if(c.id === 'kcs'){ o.chronic = !!st.x.chronic; o.tear_breakup_s = st.x.tbu ?? 10; o.blink_interval_s = st.x.blink ?? 6; o.mucus = +(st.x.mucus ?? 0.5).toFixed(2); o.squint = +(st.x.squint ?? 0.4).toFixed(2); }
     if(c.id === 'retinal_detachment') o.dir_deg = st.x.dir_deg ?? 90;
     o.source = st.source || 'manual';
     out[c.id] = o;
