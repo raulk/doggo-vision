@@ -18,3 +18,7 @@ The parameters come from the project's research catalog: the dog colour matrix, 
 - `./build.sh` writes `site/index.html` (the deployed site) and `dist/artifact.html` (the claude.ai preview build).
 
 Edit `src/`, run `./build.sh`, and commit both outputs. Cloudflare deploys on every push to `main`; `wrangler.jsonc` serves `site/` as static assets, with no build step.
+
+## Realism tests
+
+`node tests/probe.js tests/out && python3 tests/realism.py tests/out` renders sine gratings and a point light through the senior presets (headless Chromium, software WebGL) and checks each eye's effective acuity, the 1/θ² glare falloff and the scattered-light fraction against the targets in the project's realism audit.

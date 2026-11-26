@@ -53,7 +53,7 @@ const CONDS = [
   {id:'cherry_eye', g:'adnexa', name:'Cherry eye', photo:'yes', d:'Prolapsed third-eyelid gland. A small soft occluder low on the nasal side.', s:0.5},
   {id:'entropion', g:'adnexa', name:'Entropion', photo:'yes', d:'Inrolled lid. Indirect effects: squint, tearing and a wet blur.', s:0.5},
   {id:'horner', g:'adnexa', name:'Horner syndrome', photo:'yes', d:'Small pupil, drooping upper lid and a raised third eyelid.', s:0.6},
-  {id:'kcs', g:'cornea', name:'Dry eye (KCS)', photo:'partly', d:'Tear film breaks up between blinks: blur grows, patches warp, mucus smears, bright light makes the dog squint. Animated.', s:0.5, extras:[{k:'tbu', t:'num', label:'Tear break-up time', min:1, max:20, step:1, def:10, unit:' s'},{k:'blink', t:'num', label:'Time between blinks', min:2, max:15, step:1, def:6, unit:' s'},{k:'mucus', t:'num', label:'Mucus smear', min:0, max:1, step:0.01, def:0.5},{k:'squint', t:'num', label:'Squint in bright light', min:0, max:1, step:0.01, def:0.4},{k:'chronic', t:'bool', label:'Chronic (adds corneal pigment)'}]},
+  {id:'kcs', g:'cornea', name:'Dry eye (KCS)', photo:'partly', d:'Tear film breaks up between blinks: blur grows, patches warp, mucus smears, bright light makes the dog squint. Animated.', s:0.5, extras:[{k:'tbu', t:'num', label:'Tear break-up time', min:1, max:20, step:1, def:10, unit:' s'},{k:'blink', t:'num', label:'Time between blinks', min:2, max:15, step:1, def:6, unit:' s'},{k:'mucus', t:'num', label:'Mucus smear', min:0, max:1, step:0.01, def:0},{k:'squint', t:'num', label:'Squint in bright light', min:0, max:1, step:0.01, def:0},{k:'chronic', t:'bool', label:'Chronic (adds corneal pigment)'}]},
   {id:'pigmentary_keratitis', g:'cornea', name:'Pigmentary keratitis', photo:'yes', d:'Melanin on the cornea, usually from the nasal side, veiling the temporal field. Present in about 92% of UK pugs.', s:0.35, extras:[{k:'origin', t:'sel', label:'Starts from', opts:[['medial','Nasal cornea'],['temporal','Temporal cornea'],['diffuse','Diffuse']]}]},
   {id:'corneal_edema', g:'cornea', name:'Corneal edema', photo:'yes', d:'Blue-white corneal haze with coloured halos around lights.', s:0.5},
   {id:'corneal_ulcer', g:'cornea', name:'Corneal ulcer', photo:'partly', d:'Local haze and warp over the ulcer, tearing and a squint.', s:0.5},
@@ -153,13 +153,12 @@ function compile(state, srcInfo){
   let corneaB2 = 0, lensB2 = 0, opticsB2 = 0, retinaB2 = 0;
   const pkAx = clamp((pk - 0.7)/0.3, 0, 1);
   if(on[3]){
-    corneaB2 += q(pkAx > 0 ? lerp(fracB(0.02), fracB(0.06), pkAx) : 0) + q(fracB(0.015)*edema) + q(fracB(0.015)*glS) + q(fracB(0.003)*lipid) + q(fracB(0.008)*scar)
+    corneaB2 += q(pkAx > 0 ? lerp(fracB(0.02), fracB(0.06), pkAx) : 0) + q(fracB(0.015)*edema) + q(fracB(0.015)*glS) + q(fracB(0.003)*lipid)
       + q(pannus > 0.6 ? fracB(0.03)*(pannus - 0.6)/0.4 : 0) + q(fracB(0.006)*entro);
   }
   if(on[5]){
-    // Part D's degree values assume a 0.12 deg base blur; Part I's baseline is about 0.05 deg, so scale by 0.4
-    lensB2 += q(0.4*(0.15*NS + 2.5*Math.max(0, catAge - 0.3)));
-    if(nsC > 0) lensB2 += q(fracB(0.002 + 0.008*nsC));
+    // Nuclear sclerosis changes the lens index (a myopic shift, below) and yellows it; it barely blurs.
+    // The age 'cataract risk' (catAge) is a population prior, not a finding, so it no longer blurs.
     if(cat > 0){ let sc = cat < 0.15 ? fracB(0.005)*cat/0.15 : fracB(0.005 + 0.035*cat**1.5); if(cat > 0.9) sc = Math.max(sc, fracB(0.06)); lensB2 += q(sc); }
     lensB2 += q(fracB(0.01)*lux);
   }
@@ -168,21 +167,23 @@ function compile(state, srcInfo){
   const refr = P.refraction_D + (NSall > 0 ? -1.75*lerp(0.07, 0.30, NSall) : 0);
   const need = 1/Math.max(S.dist, 0.05) + refr;
   const err = need < 0 ? -need : (need > Amax ? need - Amax : 0);
-  const defocusDeg = 0.35*(pupil/1000)*err*57.2958;
+  const defocusDeg = 0.25*(pupil/1000)*err*57.2958;
   if(on[6]){ opticsB2 += q(defocusDeg); if(closed) opticsB2 += q(10); }
   if(on[9]){ retinaB2 += q(pra > 0.6 ? fracB(0.03)*(pra - 0.6)/0.4 : 0) + q(fracB(0.03)*micro); }
   const devMult = on[6] ? (closed ? 1 : 1/Math.max(dev, 0.1)) : 1;
   const cpdEff = V.cpd*lerp(1, 0.36, m); // scotopic acuity ~2-3.5 cpd (Lind 2017)
   const acuDeg = on[6] ? 0.389/cpdEff : 0;
+  // Acuity penalties in logMAR, turned into extra blur in quadrature against the baseline:
+  // optical/neural ageing ~0.1 logMAR at end of life; grade-2 stromal haze ~0.25 (post-PRK haze grading)
+  const dLogMAR = (on[5] || on[8] ? 0.11*smooth(0.4, 1.1, a) : 0) + (on[3] ? 0.15*scar + 0.15*lipid : 0); // haze mostly costs contrast, via straylight
+  if(dLogMAR > 0 && acuDeg > 0){ const tot = acuDeg*Math.pow(10, dLogMAR); opticsB2 += tot*tot - acuDeg*acuDeg; }
 
   // ---- haze (additive, capped at 0.95)
   const hz = []; // [amount, rgb]
   if(on[3]){
-    hz.push([(brachy ? 0.1 : 0.03) + Math.min(0.1, 0.012*Math.max(0, age - 6)) + 0.15*kcs, [1, 0.98, 0.95]]); // ageing cornea stays mostly clear
+    hz.push([brachy ? 0.07 : 0, [1, 0.98, 0.95]]); // brachycephalic exposure keratopathy; ageing and dry eye act through straylight
     hz.push([0.55*edema + 0.55*glS, [0.86, 0.93, 1]]);
-    hz.push([0.25*lipid + 0.3*scar, [1, 1, 1]]);
     hz.push([0.2*pannus, [1, 0.85, 0.8]]);
-    hz.push([0.05*pk, [1, 0.97, 0.94]]);
   }
   if(on[4]){ hz.push([0.45*uve, [1, 0.97, 0.9]]); hz.push([0.35*hyp, [1, 0.55, 0.5]]); }
   let hAmt = 0, hCol = [0, 0, 0];
@@ -200,8 +201,8 @@ function compile(state, srcInfo){
 
   // ---- contrast and luminance multipliers
   let contrast = 1, lum = 1, desat = 0;
-  if(on[5]) contrast *= (1 - 0.10*NS)*(1 - 0.5*catAge)*(1 - 0.15*nsC);
-  if(on[3]) { contrast *= (1 - 0.3*scar)*(1 - (pkAx > 0 ? lerp(0.4, 0.9, pkAx) : 0))*(1 - 0.3*pannus)*(1 - 0.3*edema)*(1 - 0.25*glS); lum *= (1 - (pkAx > 0 ? lerp(0.3, 0.8, pkAx) : 0))*(1 - (pkOrigin === 'diffuse' ? 0.3 : 0.45)*pk*(1 - pkAx)); }
+  if(on[8]) contrast *= 1 - 0.15*smooth(0.6, 1.0, a); // retinal/neural ageing (aged beagles: raised contrast thresholds)
+  if(on[3]) { contrast *= (1 - (pkAx > 0 ? lerp(0.4, 0.9, pkAx) : 0))*(1 - 0.3*pannus)*(1 - 0.3*edema)*(1 - 0.25*glS); lum *= (1 - (pkAx > 0 ? lerp(0.3, 0.8, pkAx) : 0))*(1 - (pkOrigin === 'diffuse' ? 0.3 : 0.45)*pk*(1 - pkAx)); } // pigment absorbs: neutral dimming
   if(on[4]) { contrast *= (1 - 0.35*uve); lum *= (1 - 0.6*glS)*(1 - 0.35*horner)*(1 - 0.3*uve)*(1 - 0.3*hyp); desat += 0.2*uve; }
   if(on[6]) contrast *= 0.3 + 0.7*(closed ? 0 : dev);
   if(on[9]) {
@@ -214,17 +215,24 @@ function compile(state, srcInfo){
   desat = clamp(desat, 0, 1);
 
   // ---- glare terms (multiply: pigment × lens × pupil × brachycephalic)
-  const glareLens = on[5] ? 0.15*NS + 1.0*catAge : 0;
-  const glareMult = (1 + 2*(1 - pig))*(1 + glareLens)*glarePupil*(brachy ? 1.2 : 1);
+  // Straylight, CIE glare spread function: L_veil/E = s/theta^2. log(s) ~0.9 young, +0.13 per human-decade after ~40
+  // (a dog at age/lifespan a ~ a human of 75a years). Scattered fraction eta = 1 - exp(-0.0086 s).
+  const humanYears = 75*a;
+  let logS = 0.9 + 0.013*Math.max(0, humanYears - 40);
+  if(on[5]) logS += 0.6*cat; // nuclear sclerosis scatter is already in the age term
+  if(on[3]) logS += 0.7*scar + 0.4*lipid + 0.3*edema + 0.2*pannus;
+  logS += Math.log10((1 + 2*(1 - pig))*(brachy ? 1.2 : 1));
+  const glareMult = (1 + 2*(1 - pig))*glarePupil*(brachy ? 1.2 : 1);
   let bloom = 0;
-  if(on[5]) bloom += (cat > 0 ? 0.2 + 1.5*cat : 0) + 0.3*nsC + 0.3*glareLens;
-  if(on[3]) bloom += 0.6*kcs + 0.4*lipid + 0.6*scar + 0.4*edema + 0.5*glS;
+  if(on[5]) bloom += cat > 0 ? 0.2 + 1.5*cat : 0;
+  if(on[3]) bloom += 0.4*edema + 0.5*glS;
   if(on[4]) bloom += 1.0*ia;
   if(on[9]) bloom += 0.4*pra;
   bloom = on[10] ? Math.min(3, bloom*(1 + 2*(1 - pig))*Math.sqrt(glarePupil)*(brachy ? 1.2 : 1)) : 0;
   const bloomDeg = cat > 0 ? lerp(frac(0.03), frac(0.15), cat) : 4;
   const halo = on[3] ? Math.min(2, 0.8*edema + 0.8*glS) : 0;
-  const veil = on[10] ? V.veil*glareMult*(on[3] ? 1 + 3*scar + 1.5*lipid + 1.5*kcs : 1) : 0;
+  const sStray = Math.pow(10, logS)*(V.veil/0.05);
+  const veil = on[10] ? clamp(1 - Math.exp(-0.0086*sStray), 0, 0.9) : 0;
 
   // ---- ghost
   let ghost = [0, 0, 0, 0];
@@ -242,7 +250,7 @@ function compile(state, srcInfo){
 
   // ---- apertures (lids)
   const bright = 0.4 + 0.6*(1 - m);
-  const sq = Math.max(kcs*ex('kcs', 'squint', 0.4), 0.5*ulcer, 0.35*uve, 0.3*entro, 0.3*glS, 0.25*ia*(1 - m))*bright;
+  const sq = Math.max(kcs*ex('kcs', 'squint', 0), 0.5*ulcer, 0.35*uve, 0.3*entro, 0.3*glS, 0.25*ia*(1 - m))*bright;
   let lidTop = 0, lidBot = 0, third = 0, thirdTint = [0.95, 0.7, 0.7];
   if(on[2]){
     lidTop = sq*0.55 + 0.3*horner; lidBot = sq*0.45;
@@ -284,15 +292,16 @@ function compile(state, srcInfo){
   let gain = Math.min(1, humanB*night)*ret*lum*2**ev;
   if(closed && on[6]) gain *= 0.12;
   const tint = [1, 1, 1];
-  if(on[3] && pk > 0 && pkOrigin === 'diffuse'){ const w = 0.6*pk; tint[0] *= 1 - 0.15*w; tint[1] *= 1 - 0.25*w; tint[2] *= 1 - 0.35*w; } // melanin over the pupil: dimmer, warmer
-  if(on[5]){ const bg = (1 - 0.15*NS)*(1 - 0.1*nsC); tint[2] *= bg; }
+  // Lens yellowing: the visual system renormalises to its own lens (Delahunt et al. 2004), so whites stay white;
+  // what remains is a little less blue-yellow contrast.
+  const yellow = on[5] ? (1 - 0.15*NS)*(1 - 0.1*nsC) : 1;
   if(closed && on[6]){ tint[0] *= 1; tint[1] *= 0.35; tint[2] *= 0.3; }
   const noise = on[10] ? V.noise*Math.pow(m, 1.2)*0.12 + (on[9] ? 0.1*sN*m : 0) : 0;
   const lower = on[10] ? V.lower*T*m : 0;
 
   // ---- colour
   const k = V.chroma;
-  const dm = on[7] ? dogMatrix(k) : [[1,0,0],[0,1,0],[0,0,1]];
+  const dm = on[7] ? dogMatrix(k*yellow) : [[1,0,0],[0,1,0],[0,0,1]];
   const rowL = on[7] ? L_DOG : [0.2126, 0.7152, 0.0722];
   const mU = on[7] ? m : 0;
 
@@ -318,9 +327,10 @@ function compile(state, srcInfo){
     uGain: gain, uLower: lower, uNoise: noise, uPart: [part[0], part[1], 0],
     uZone: [B/2, F/2], occ,
   };
-  const kcsState = kcsOn ? {s:kcs, tbu: ex('kcs', 'tbu', 20*(1 - kcs) + kcs), interval: ex('kcs', 'blink', 6), mucus: ex('kcs', 'mucus', 0.5), sigmaMax: fracB(0.012)} : null;
+  const kcsState = kcsOn ? {s:kcs, tbu: ex('kcs', 'tbu', 20*(1 - kcs) + kcs), interval: ex('kcs', 'blink', 6), mucus: ex('kcs', 'mucus', 0), eta: veil} : null;
 
   const derived = {
+    straylight_log_s: +logS.toFixed(2), straylight_eta: +veil.toFixed(2),
     a: +a.toFixed(3), streak_strength: +s.toFixed(2), skull: skullOf(P.ci), field_total_deg: Math.round(F), binocular_overlap_deg: Math.round(B),
     nose_mask_width_deg: +noseW.toFixed(1), refraction_D: +refr.toFixed(2), accommodation_max_D: +Amax.toFixed(2),
     nuclear_sclerosis: +NS.toFixed(2), age_lens_opacity: +catAge.toFixed(2), retina_gain_photopic: +Rp.toFixed(2), retina_gain_scotopic: +Rs.toFixed(2),
@@ -346,7 +356,7 @@ function compile(state, srcInfo){
     occluders: occ.map(o => ({kind:o.kind, field_wedge:{dir_deg: Math.round(Math.atan2(o.dir[1], o.dir[0])*180/Math.PI), edge_deg: +o.edge.toFixed(1), soft_deg:o.soft}, transmission: +(1 - o.dens).toFixed(2), tint_rgb:o.tint})),
     distortion: {amp_frac: kcsOn ? +(0.015*kcs).toFixed(4) : 0, freq: 3, time_varying: kcsOn},
     ghost: {alpha: +ghost[0].toFixed(2), offset_frac: [+(ghost[1]/REF_FOV).toFixed(3), +(ghost[2]/REF_FOV).toFixed(3)], blur_frac: +(ghost[3]/REF_BLUR).toFixed(4), wobble_hz: lux > 0 ? 3 : 0},
-    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: kcsState.interval, sigma_max_frac: +(0.012*kcs).toFixed(3), mucus_alpha: +(0.7*kcsState.mucus*kcs).toFixed(2)} : {enabled:false},
+    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: kcsState.interval, added_straylight_eta: +(0.08*kcs).toFixed(3), blur_scale_max: +(1 + 0.6*kcs).toFixed(2), mucus_alpha: +(0.7*kcsState.mucus*kcs).toFixed(2)} : {enabled:false},
     aperture: {top: +lidTop.toFixed(2), bottom: +lidBot.toFixed(2), nasal_inferior: +third.toFixed(2), bright_squint: +sq.toFixed(2)},
     particles: {count: Math.round(part[0]*200), kind: part[0] > 0 ? (part[1] > 0.5 ? 'floater' : 'asteroid') : null, settle_s: 2.0},
     photophobia: {exposure_ev_bright: +ev.toFixed(2)},
@@ -371,7 +381,7 @@ function condHypotheses(state){
     if(c.id === 'cataract'){ o.stage = catStage(st.s, st.x.hypermature); o.type = st.x.type || 'cortical'; }
     if(c.id === 'glaucoma'){ o.damage = +(st.x.damage ?? 0.4).toFixed(2); o.acute = st.s > 0.5; }
     if(c.id === 'pigmentary_keratitis'){ o.origin = st.x.origin || 'medial'; o.maini_score_est = +(st.s*14).toFixed(1); }
-    if(c.id === 'kcs'){ o.chronic = !!st.x.chronic; o.tear_breakup_s = st.x.tbu ?? 10; o.blink_interval_s = st.x.blink ?? 6; o.mucus = +(st.x.mucus ?? 0.5).toFixed(2); o.squint = +(st.x.squint ?? 0.4).toFixed(2); }
+    if(c.id === 'kcs'){ o.chronic = !!st.x.chronic; o.tear_breakup_s = st.x.tbu ?? 10; o.blink_interval_s = st.x.blink ?? 6; o.mucus = +(st.x.mucus ?? 0).toFixed(2); o.squint = +(st.x.squint ?? 0).toFixed(2); }
     if(c.id === 'retinal_detachment') o.dir_deg = st.x.dir_deg ?? 90;
     o.source = st.source || 'manual';
     out[c.id] = o;

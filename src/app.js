@@ -30,8 +30,8 @@ function editEye(e){
 
 const PRESETS = [
   {id:'kcs15both', name:'Senior, 15: both eyes', note:'Both eyes blended: clearer right eye leads where the fields overlap', p:['mixed', 15], prof:{lifespan_years:14, eye:'OS'}, eyes:{OS:'kcs15', OD:'kcs15b'}},
-  {id:'kcs15', name:'Senior, 15: cloudy left eye', note:'Dry eye, corneal scarring and pigment, lens fog', p:['mixed', 15], prof:{lifespan_years:14, eye:'OS'}, c:{kcs:{s:0.6, x:{chronic:false, blink:6, tbu:4, mucus:0.5, squint:0.35}}, corneal_scar:{s:0.55}, pigmentary_keratitis:{s:0.35, x:{origin:'diffuse'}}, nuclear_sclerosis:{s:0.5}}},
-  {id:'kcs15b', name:'Senior, 15: clearer right eye', note:'Milder dry eye, a few spots, lens fog', p:['mixed', 15], prof:{lifespan_years:14, eye:'OD'}, c:{kcs:{s:0.4, x:{chronic:false, blink:6, tbu:6, mucus:0.35, squint:0.25}}, corneal_scar:{s:0.15}, pigmentary_keratitis:{s:0.15, x:{origin:'temporal'}}, nuclear_sclerosis:{s:0.45}}},
+  {id:'kcs15', name:'Senior, 15: cloudy left eye', note:'Dry eye, corneal scarring and pigment, lens fog', p:['mixed', 15], prof:{lifespan_years:14, eye:'OS'}, c:{kcs:{s:0.6, x:{chronic:false, blink:6, tbu:4, mucus:0, squint:0}}, corneal_scar:{s:0.55}, pigmentary_keratitis:{s:0.35, x:{origin:'diffuse'}}, nuclear_sclerosis:{s:0.5}}},
+  {id:'kcs15b', name:'Senior, 15: clearer right eye', note:'Milder dry eye, a few small scars, lens fog', p:['mixed', 15], prof:{lifespan_years:14, eye:'OD'}, c:{kcs:{s:0.4, x:{chronic:false, blink:6, tbu:6, mucus:0, squint:0}}, corneal_scar:{s:0.1}, nuclear_sclerosis:{s:0.45}}},
   {id:'puppy3', name:'Puppy, 3 weeks', note:'Eyes just open, retina maturing', p:['labrador', 3/52]},
   {id:'puppy10', name:'Puppy, 10 weeks', note:'Near-adult optics', p:['labrador', 10/52]},
   {id:'lab', name:'Adult Labrador', note:'Baseline: dichromat, 20/75', p:['labrador', 4]},
@@ -346,22 +346,25 @@ function renderMain(t, comp, target, eye){
   U.occ.slice(0, 4).forEach((o, i) => { oa.set([o.dir[0], o.dir[1], o.edge, o.soft], i*4); ob.set([...o.tint, o.dens], i*4); });
   gl.uniform4fv(p.loc('uOccA[0]'), oa); gl.uniform4fv(p.loc('uOccB[0]'), ob);
   // time-varying terms: tear film cycle, lens wobble, flicker illustration
-  let blurG = U.uBlurG, warp = [0, 3, 0], mucus = 0, blink = 0, kdry = 0;
+  let blurG = U.uBlurG, warp = [0, 3, 0], mucus = 0, blink = 0, kdry = 0, veil = U.uVeil, sigTot = 0;
   const ks = comp.kcsState;
   if(ks){
     const tempOn = state.stages[11];
     const ph = tempOn ? t % ks.interval : 4.2;
     if(tempOn && ph < 0.22) blink = Math.sin(Math.PI*ph/0.22);
-    const dry = smooth(0, ks.tbu, ph - 0.22);
-    const sk = ks.sigmaMax*ks.s*dry;
-    blurG = Math.sqrt(blurG*blurG + sk*sk);
+    const dry = smooth(ks.tbu, ks.tbu + 3, ph);
     kdry = ks.s*dry;
+    const acu = U.uAcu;
+    sigTot = Math.sqrt(acu*acu + blurG*blurG)*(1 + 0.6*kdry);
+    blurG = Math.sqrt(Math.max(0, sigTot*sigTot - acu*acu));
+    veil = 1 - (1 - veil)*(1 - 0.08*kdry);
     mucus = 0.7*ks.mucus*ks.s*(0.4 + 0.6*dry);
   }
+  setU(p, 'uVeil', veil);
   setU(p, 'uBlurG', blurG); setU(p, 'uWarp', warp); setU(p, 'uMucus', mucus);
   const lid = U.uLid.slice(); lid[3] = state.stages[2] ? blink : 0; setU(p, 'uLid', lid);
   const g = U.uGhost.slice();
-  if(kdry > 0 && g[0] === 0){ const d = 0.15 + 0.35*kdry; g[0] = 0.3*kdry; g[1] = d*Math.cos(t*0.7); g[2] = d*Math.sin(t*0.53); g[3] = 0.2 + 0.4*kdry; }
+  if(kdry > 0 && g[0] === 0){ const d = 1.5*sigTot, th = 0.8 + 0.15*t; g[0] = 0.25*kdry; g[1] = d*Math.cos(th); g[2] = d*Math.sin(th); g[3] = sigTot; }
   if(comp.lux > 0 && state.stages[11]){ g[1] += Math.sin(t*2*Math.PI*3)*0.4*comp.lux; g[2] += Math.cos(t*2*Math.PI*3)*0.25*comp.lux; }
   setU(p, 'uGhost', g);
   let gain = U.uGain; if(S.flicker && state.stages[11]) gain *= (Math.sin(t*2*Math.PI*6) > 0) ? 1 : 0.82;

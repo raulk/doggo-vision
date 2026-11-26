@@ -166,8 +166,9 @@ void main(){
   if(uVeil > 0.0){
     vec3 v = vec3(0.0); float ws = 0.0;
     for(int k=3; k<13; k++){ float fk = float(k); if(fk > uLevels - 1.0) break;
-      float w = 1.0/(fk - 1.5); vec4 t = textureLod(uPyr, uv, fk); v += w*t.rgb*(1.0 + t.a*uAS); ws += w; }
-    c += uVeil*v/max(ws, 1e-4);
+      vec4 t = textureLod(uPyr, uv, fk); v += t.rgb*(1.0 + t.a*uAS); ws += 1.0; }
+    // equal weight per octave reproduces the s/theta^2 glare spread; mixing conserves energy
+    c = mix(c, v/max(ws, 1e-4), uVeil);
   }
   if(uBloom > 0.0){
     float bp = uBloomDeg*uPPD;
