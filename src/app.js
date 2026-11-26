@@ -1,5 +1,5 @@
 // Where the standalone (camera-capable) build is served.
-const HOSTED_URL = 'https://doggo-vision.unstoppablesys.workers.dev/';
+const HOSTED_URL = 'https://raulk.github.io/dogsight/';
 // ---------- State ----------
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];

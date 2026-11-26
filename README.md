@@ -1,8 +1,8 @@
-# Doggo Vision
+# Dogsight
 
 A browser simulator of how a dog sees: dichromat colour, low acuity that depends on skull shape, night vision, ageing, and 24 eye conditions. It runs as WebGL2 shaders over a photo, a video or your phone's live camera.
 
-**Try it:** https://doggo-vision.unstoppablesys.workers.dev/ (on a phone, open **Source → Live camera**).
+**Try it:** https://raulk.github.io/dogsight/ (on a phone, open **Source → Live camera**).
 
 ![A garden split in two: the human view on the left, and the same garden through a 15-year-old dog's eyes on the right](docs/images/yard-split-senior.jpg)
 
@@ -47,8 +47,8 @@ Read more:
 There is no build step to serve it. It is one static HTML file.
 
 ```sh
-git clone https://github.com/raulk/doggo-vision
-cd doggo-vision
+git clone https://github.com/raulk/dogsight
+cd dogsight
 python3 -m http.server -d site 8000   # then open http://localhost:8000
 ```
 
@@ -67,7 +67,7 @@ Commit `src/` and both outputs.
 - `src/head.html` (styles), `src/body.html` (markup), `src/shaders.js` (GLSL), `src/model.js` (dog profile → shader parameters), `src/samples.js` (procedural test scenes), `src/app.js` (renderer and UI).
 - `tests/`: the realism regression tests.
 - `docs/`: decisions, unknowns and research.
-- `wrangler.jsonc`: serves `site/` as Cloudflare Workers static assets.
+- `.github/workflows/pages.yml`: publishes `site/` to GitHub Pages.
 
 ### How it works
 
@@ -85,7 +85,7 @@ node tests/probe.js tests/out && python3 tests/realism.py tests/out
 
 ## Deploying
 
-Cloudflare Workers serves `site/` as static assets (`wrangler.jsonc`) and is set to deploy on every push to `main`. Git-triggered deploys have been unreliable; if the live site doesn't update, run `npx wrangler deploy` from the repo root.
+GitHub Pages serves `site/` as it is. The workflow in `.github/workflows/pages.yml` publishes it on every push to `main`, so after editing `src/`, run `./build.sh` and commit the output. To set it up on a fork, open **Settings → Pages** and set **Source** to **GitHub Actions**.
 
 ## Licence
 
