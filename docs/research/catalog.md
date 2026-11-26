@@ -270,7 +270,7 @@ Compiled 2026-11-25 by the `vision-baseline` research agent. This covers only no
 #### 1.5 Simulation: colour matrices
 
 **Method (reproducible).**
-- Script: `/tmp/claude-0/-home-claude/9a9462d1-0e72-53b3-af21-edc46b4342c2/scratchpad/scripts/dogmat.py`. It uses colour-science 0.4.6.
+- Computed in Python using `colour-science` 0.4.6.
 - Dog quantal sensitivity is modelled with Govardovskii et al. (2000) A1 templates at λmax 429, 555 and 508 nm, converted to an energy basis (× λ).
 - The canine ocular media are treated as flat above 390 nm, which follows from Douglas & Jeffery.
 - Each template is least-squares fit to the CIE 1931 2° CMFs, then composed with the sRGB→XYZ matrix and normalised so that D65 white (1,1,1) maps to 1.

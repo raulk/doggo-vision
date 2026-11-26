@@ -1,5 +1,4 @@
 tests/out/
-# Build outputs: ./build.sh writes these; CI builds them for GitHub Pages.
-dist/
+# Build output: CI builds site/index.html for GitHub Pages.
 site/index.html
 node_modules/

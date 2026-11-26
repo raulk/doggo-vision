@@ -91,6 +91,7 @@ interface Session {
 	inputNames: readonly string[];
 	outputNames: readonly string[];
 	run(feeds: Record<string, Tensor>): Promise<Record<string, Tensor>>;
+	release?(): Promise<void>;
 }
 interface Runtime {
 	env: { wasm: { wasmPaths: string } };
@@ -107,7 +108,14 @@ interface Runtime {
 	) => Tensor;
 }
 
-async function loadSession() {
+interface LoadedDepth {
+	session: Session;
+	Tensor: Runtime["Tensor"];
+	provider: "WebGPU" | "WASM";
+	fallbackToWasm: () => Promise<void>;
+}
+
+async function loadSession(): Promise<LoadedDepth> {
 	const entry = `${ORT_CDN}ort.webgpu.min.mjs`;
 	const ort = (await import(/* @vite-ignore */ entry)) as Runtime;
 	ort.env.wasm.wasmPaths = ORT_CDN;
@@ -123,7 +131,7 @@ async function loadSession() {
 	const model = new Uint8Array(await response.arrayBuffer());
 	const create = (executionProviders: string[]) =>
 		ort.InferenceSession.create(model, { executionProviders });
-	let provider = "WebGPU";
+	let provider: "WebGPU" | "WASM" = "WebGPU";
 	let session: Session;
 	try {
 		session = await create(["webgpu"]);
@@ -131,9 +139,20 @@ async function loadSession() {
 		provider = "WASM";
 		session = await create(["wasm"]);
 	}
-	return { session, Tensor: ort.Tensor, provider };
+	const loaded: LoadedDepth = {
+		session,
+		Tensor: ort.Tensor,
+		provider,
+		fallbackToWasm: async () => {
+			if (loaded.provider === "WASM") return;
+			await loaded.session.release?.().catch(() => {});
+			loaded.session = await create(["wasm"]);
+			loaded.provider = "WASM";
+		},
+	};
+	return loaded;
 }
-let sessionLoading: ReturnType<typeof loadSession> | undefined;
+let sessionLoading: Promise<LoadedDepth> | undefined;
 
 export async function estimatePhotoDepth(
 	sourceCanvas: HTMLCanvasElement,
@@ -145,7 +164,7 @@ export async function estimatePhotoDepth(
 			sessionLoading = undefined;
 			throw cause;
 		});
-		const { session, Tensor, provider } = await sessionLoading;
+		const runtime = await sessionLoading;
 		onProgress?.("Estimating depth…");
 		// Let the status paint before the synchronous preprocessing.
 		await new Promise<void>((resolve) =>
@@ -156,15 +175,27 @@ export async function estimatePhotoDepth(
 		const { data } = sourceCanvas
 			.getContext("2d")!
 			.getImageData(0, 0, width, height, { colorSpace: "srgb" });
-		const input = new Tensor(
+		const input = new runtime.Tensor(
 			"float32",
 			preprocessDepthInput(data, width, height),
 			[1, 3, SIZE, SIZE],
 		);
+		const runInference = async () =>
+			(
+				await runtime.session.run({
+					[runtime.session.inputNames[0]!]: input,
+				})
+			)[runtime.session.outputNames[0]!]!;
 		try {
-			const output = (await session.run({ [session.inputNames[0]!]: input }))[
-				session.outputNames[0]!
-			]!;
+			let output: Tensor;
+			try {
+				output = await runInference();
+			} catch (error) {
+				if (runtime.provider !== "WebGPU") throw error;
+				onProgress?.("Switching depth inference to WASM…");
+				await runtime.fallbackToWasm();
+				output = await runInference();
+			}
 			try {
 				const [h, w] = output.dims.slice(-2);
 				const canvas = document.createElement("canvas");
@@ -180,7 +211,7 @@ export async function estimatePhotoDepth(
 					nearM: 0.4,
 					farM: 25,
 					kind: "estimated",
-					detail: `Depth Anything V2 · ${provider} (${elapsedMs} ms)`,
+					detail: `Depth Anything V2 · ${runtime.provider} (${elapsedMs} ms)`,
 				};
 			} finally {
 				output.dispose();

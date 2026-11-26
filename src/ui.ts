@@ -1,11 +1,5 @@
 import { $, $$ } from "./dom";
-import {
-	COARSE,
-	type DogsightMedia,
-	errorMessage,
-	HOSTED_URL,
-	inArtifact,
-} from "./media";
+import { COARSE, type DogsightMedia, errorMessage, HOSTED_URL } from "./media";
 import { gainMapHeadroom, photoSummary, sourcePanorama } from "./metadata";
 import {
 	BREEDS,
@@ -1244,7 +1238,8 @@ export function createUI(
 		const source = media.current;
 		const live = cameraLive();
 		const video = source?.kind === "video" ? source.video : undefined;
-		$("#camflip").hidden = !live;
+		$("#camflip").hidden =
+			!live || !(source?.kind === "video" && source.canFlip);
 		$("#camstop").hidden = !video;
 		$("#vidplay").hidden = !video || live;
 		if (video && !live)
@@ -1415,7 +1410,7 @@ export function createUI(
 
 	buildPanels();
 	bindControls();
-	void bindSave(state, actions.capture);
+	bindSave(state, actions.capture);
 	return {
 		update: updateUI,
 		updateStats,
@@ -1428,8 +1423,11 @@ export function createUI(
 export function cameraBlocked() {
 	const note = $("#camnote");
 	const message = document.createElement("span");
-	message.textContent =
-		"This preview cannot use the camera. Open the standalone version for live mode:";
+	message.textContent = !window.isSecureContext
+		? "Live camera requires HTTPS. Open the hosted site for live mode:"
+		: window.top !== window.self
+			? "This embedded frame cannot access the camera. Open the standalone site for live mode:"
+			: "This browser cannot access the camera here. Open the hosted site for live mode:";
 	const link = document.createElement("a");
 	link.href = HOSTED_URL;
 	link.target = "_blank";
@@ -1457,13 +1455,6 @@ export function toast(message: string) {
 	}, 2600);
 }
 
-interface Download {
-	save: (item: { filename: string; data: Blob }) => void | Promise<void>;
-}
-type PreviewWindow = Window & {
-	claude?: { use: (capability: "downloads") => Promise<Download | null> };
-};
-
 function download({ filename, data }: { filename: string; data: Blob }) {
 	const url = URL.createObjectURL(data);
 	const link = document.createElement("a");
@@ -1475,43 +1466,18 @@ function download({ filename, data }: { filename: string; data: Blob }) {
 	window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-async function bindSave(state: AppState, capture: Actions["capture"]) {
-	let save: Download["save"] = download;
-	if (inArtifact()) {
-		const preview = window as PreviewWindow;
-		try {
-			for (let i = 0; i < 30 && !preview.claude?.use; i++)
-				// oxlint-disable-next-line no-await-in-loop -- Preview capabilities can arrive after initial page load.
-				await new Promise((resolve) => setTimeout(resolve, 100));
-			const capability = await preview.claude?.use("downloads");
-			if (!capability) return;
-			save = (item) => capability.save(item);
-		} catch {
-			return;
-		}
-	}
-	const button = $("#save");
-	button.hidden = false;
-	button.onclick = async () => {
+function bindSave(state: AppState, capture: Actions["capture"]) {
+	$("#save").onclick = async () => {
 		try {
 			const data = await capture();
 			if (!data) return;
-			await save({
+			download({
 				filename: `dog-view-${state.preset ?? "custom"}.png`,
 				data,
 			});
 			toast("Saved");
-		} catch (error) {
-			if (
-				!(
-					error &&
-					typeof error === "object" &&
-					"code" in error &&
-					error.code === "declined"
-				)
-			) {
-				toast("The image could not be saved here.");
-			}
+		} catch {
+			toast("The image could not be saved here.");
 		}
 	};
 }

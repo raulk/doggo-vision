@@ -111,9 +111,12 @@ export class DogsightViewport {
 	}
 
 	private nativeZoom() {
+		if (!this.canvas.width || !this.canvas.clientWidth || !this.rect[2])
+			return 1;
 		// The backing buffer is capped at 2×, even on higher-density screens.
 		const screenScale =
-			(this.canvas.clientWidth * window.devicePixelRatio) / this.canvas.width;
+			(this.canvas.clientWidth * (window.devicePixelRatio || 1)) /
+			this.canvas.width;
 		return this.sourceWidth / (this.rect[2] * screenScale);
 	}
 
@@ -274,8 +277,14 @@ export class DogsightViewport {
 			"wheel",
 			(event) => {
 				event.preventDefault();
+				const delta =
+					event.deltaMode === WheelEvent.DOM_DELTA_LINE
+						? event.deltaY * 16
+						: event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+							? event.deltaY * vp.clientHeight
+							: event.deltaY;
 				this.zoomAt(
-					view.zoom * Math.exp(-event.deltaY * 0.0015),
+					view.zoom * Math.exp(-delta * 0.0015),
 					...this.point(event),
 				);
 			},

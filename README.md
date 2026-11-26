@@ -64,7 +64,7 @@ npm run build                         # writes site/index.html
 
 The live camera needs a secure origin: `localhost` works on the same machine, and a phone needs HTTPS (for example the deployed site, or a tunnel).
 
-Open `site/index.html` directly or serve it with `python3 -m http.server -d site 8000`. The `./build.sh` wrapper also copies the bundle to `dist/artifact.html` for embedded previews.
+Serve the built bundle locally with `python3 -m http.server -d site 8000` (or use `npm run dev` during development).
 
 ### Layout
 
@@ -104,5 +104,3 @@ The workflow in `.github/workflows/pages.yml` runs `npm ci`, `npm run check` and
 ## Licence
 
 Code is under the [MIT licence](LICENSE). The documents in `docs/` are under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). This is a non-commercial hobby project.
-
-Built with [Claude Code](https://claude.com/claude-code).

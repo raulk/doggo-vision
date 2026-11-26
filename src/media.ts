@@ -18,10 +18,6 @@ export const COARSE = matchMedia("(pointer: coarse)").matches;
 const VIDEO_SIDE = COARSE ? 960 : 1280;
 export const HOSTED_URL = "https://raulk.github.io/dogsight/";
 
-export function inArtifact() {
-	return window.top !== window.self;
-}
-
 interface ImageSource extends SourceMeta {
 	kind: "image";
 	canvas: HTMLCanvasElement;
@@ -35,6 +31,7 @@ interface VideoSource extends SourceMeta {
 	video: HTMLVideoElement;
 	stream?: MediaStream;
 	mirror: boolean;
+	canFlip: boolean;
 	newFrame: boolean;
 }
 export type MediaSource = ImageSource | VideoSource;
@@ -171,10 +168,15 @@ export class DogsightMedia {
 				imageOrientation: "from-image",
 			});
 		} catch {
-			if (token === this.token)
+			if (token === this.token) {
+				const isHeic =
+					/^image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
 				this.toast(
-					"That image could not be opened in this browser. Try JPEG, PNG or WebP.",
+					isHeic
+						? "HEIC photos are only supported in Safari. Convert to JPEG, PNG or WebP to open in this browser."
+						: "That image could not be opened in this browser. Try JPEG, PNG or WebP.",
 				);
+			}
 			return;
 		}
 		const { width, height } = bitmap;
@@ -272,7 +274,7 @@ export class DogsightMedia {
 			routes.push(() =>
 				URL.createObjectURL(new Blob([file], { type: "video/mp4" })),
 			);
-		if (file.size < 80e6)
+		if (file.size < 25e6)
 			routes.push(
 				() =>
 					new Promise((resolve, reject) => {
@@ -340,23 +342,51 @@ export class DogsightMedia {
 				stopVideo(video);
 				return;
 			}
-			const front =
-				(stream.getVideoTracks()[0]?.getSettings().facingMode ?? requested) ===
-				"user";
-			this.useVideo(video, front ? "Front camera" : "Camera", stream, front);
+			let canFlip = COARSE;
+			try {
+				const devices = await navigator.mediaDevices.enumerateDevices?.();
+				if (devices) {
+					const videoInputs = devices.filter(
+						(d) => d.kind === "videoinput",
+					).length;
+					if (videoInputs > 0) canFlip = videoInputs > 1;
+				}
+			} catch {
+				// Keep default flip visibility if device enumeration is unavailable.
+			}
+			if (token !== this.token) {
+				stopVideo(video);
+				return;
+			}
+			const facingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
+			const front = facingMode
+				? facingMode === "user"
+				: canFlip && requested === "user";
+			this.useVideo(
+				video,
+				front ? "Front camera" : "Camera",
+				stream,
+				front,
+				canFlip,
+			);
 		} catch (error) {
 			if (video) stopVideo(video);
 			else for (const track of stream?.getTracks() ?? []) track.stop();
 			if (token !== this.token) return;
-			if (inArtifact() || !window.isSecureContext) this.cameraBlocked();
+			if (!window.isSecureContext) this.cameraBlocked();
 			else if (
 				error instanceof DOMException &&
 				error.name === "NotAllowedError"
+			) {
+				if (window.top !== window.self) this.cameraBlocked();
+				else
+					this.toast(
+						"Camera permission was refused. Allow it in your browser's site settings to use live mode.",
+					);
+			} else if (
+				error instanceof DOMException &&
+				error.name === "NotFoundError"
 			)
-				this.toast(
-					"Camera permission was refused. Allow it in your browser's site settings to use live mode.",
-				);
-			else if (error instanceof DOMException && error.name === "NotFoundError")
 				this.toast("No camera was found on this device.");
 			else this.toast(`The camera could not start: ${errorMessage(error)}`);
 		}
@@ -367,6 +397,7 @@ export class DogsightMedia {
 		name: string,
 		stream?: MediaStream,
 		mirror = false,
+		canFlip = false,
 	) {
 		const canvas = canvasSized(video.videoWidth, video.videoHeight, VIDEO_SIDE);
 		const source: VideoSource = {
@@ -375,6 +406,7 @@ export class DogsightMedia {
 			video,
 			stream,
 			mirror,
+			canFlip,
 			newFrame: true,
 			name,
 			hfov: 68,

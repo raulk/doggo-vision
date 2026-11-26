@@ -119,7 +119,6 @@ export type Vec3 = [number, number, number];
 export type Vec4 = [number, number, number, number];
 export type Mat3 = [Vec3, Vec3, Vec3];
 export type CompiledModel = ReturnType<typeof compile>;
-export type Uniforms = CompiledModel["U"];
 export interface Finding {
 	p?: number;
 	severity?: number;

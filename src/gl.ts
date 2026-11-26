@@ -46,8 +46,8 @@ export class DogsightGL {
 	private src!: WebGLTexture;
 	private pyramid!: WebGLTexture;
 	private dog!: WebGLTexture;
-	private dog2!: WebGLTexture;
-	private blend!: WebGLTexture;
+	private dog2?: WebGLTexture;
+	private blend?: WebGLTexture;
 	private sustained!: [WebGLTexture, WebGLTexture];
 	private fast!: [WebGLTexture, WebGLTexture];
 	private temporalView!: WebGLTexture;
@@ -115,10 +115,13 @@ export class DogsightGL {
 			typeof rawRenderer === "string" && rawRenderer.trim()
 				? rawRenderer.trim()
 				: "WebGL2";
-		this.floatReadback = !!gl.getExtension("EXT_color_buffer_float");
-		this.floatRT =
-			this.floatReadback || !!gl.getExtension("EXT_color_buffer_half_float");
+		const hasFloatExt = !!gl.getExtension("EXT_color_buffer_float");
+		const hasHalfFloatExt =
+			hasFloatExt || !!gl.getExtension("EXT_color_buffer_half_float");
 		gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+		this.fbo = gl.createFramebuffer()!;
+		this.floatRT = hasHalfFloatExt && this.supportsFloatMRT();
+		this.floatReadback = hasFloatExt && this.floatRT;
 		this.alphaScale = this.floatRT ? 1 : 4;
 		this.programs = {
 			pano: this.program(FS_PANO, "panorama"),
@@ -138,9 +141,9 @@ export class DogsightGL {
 		);
 		gl.enableVertexAttribArray(0);
 		gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-		this.fbo = gl.createFramebuffer()!;
 		this.width = 0;
 		this.height = 0;
+		this.dog2 = this.blend = undefined;
 		this.gainTex = undefined;
 		this.gainMap = undefined;
 		this.depth = this.dome = undefined;
@@ -148,6 +151,46 @@ export class DogsightGL {
 		this.pyramidDirty = true;
 		this.rendered = false;
 		this.available = true;
+	}
+
+	private supportsFloatMRT() {
+		const { gl } = this;
+		const probes = [
+			this.allocateTexture(1, 1, gl.RGBA16F),
+			this.allocateTexture(1, 1, gl.RGBA16F),
+			this.allocateTexture(1, 1, gl.RGBA16F),
+		];
+		const attachments = [
+			gl.COLOR_ATTACHMENT0,
+			gl.COLOR_ATTACHMENT1,
+			gl.COLOR_ATTACHMENT2,
+		];
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+		attachments.forEach((attachment, index) => {
+			gl.framebufferTexture2D(
+				gl.FRAMEBUFFER,
+				attachment,
+				gl.TEXTURE_2D,
+				probes[index]!,
+				0,
+			);
+		});
+		gl.drawBuffers(attachments);
+		const complete =
+			gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+		gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+		for (const attachment of attachments) {
+			gl.framebufferTexture2D(
+				gl.FRAMEBUFFER,
+				attachment,
+				gl.TEXTURE_2D,
+				null,
+				0,
+			);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		for (const texture of probes) gl.deleteTexture(texture);
+		return complete;
 	}
 
 	get stats() {
@@ -281,8 +324,9 @@ export class DogsightGL {
 					...this.sustained,
 					...this.fast,
 				])
-					gl.deleteTexture(texture);
+					gl.deleteTexture(texture ?? null);
 			}
+			this.dog2 = this.blend = undefined;
 			if (this.dome) {
 				gl.deleteTexture(this.dome.color);
 				gl.deleteTexture(this.dome.depth ?? null);
@@ -297,8 +341,6 @@ export class DogsightGL {
 			this.src = this.allocateTexture(w, h, gl.RGBA8);
 			this.pyramid = this.allocateTexture(w, h, format, this.levels);
 			this.dog = buffer();
-			this.dog2 = buffer();
-			this.blend = buffer();
 			this.sustained = [buffer(), buffer()];
 			this.fast = [buffer(), buffer()];
 			this.temporalView = buffer();
@@ -499,20 +541,27 @@ export class DogsightGL {
 		this.renderMain(state, t, comp, this.dog, eye, field, rectilinear);
 		let current = this.dog;
 		if (other) {
+			const format = this.floatRT ? gl.RGBA16F : gl.RGBA8;
+			const dog2 = (this.dog2 ??= this.allocateTexture(width, height, format));
+			const blend = (this.blend ??= this.allocateTexture(
+				width,
+				height,
+				format,
+			));
 			this.renderMain(
 				state,
 				t,
 				other,
-				this.dog2,
+				dog2,
 				eye === "OS" ? "OD" : "OS",
 				field,
 				rectilinear,
 			);
 			const p = this.programs.blend;
 			gl.useProgram(p);
-			this.target(this.blend, 0, this.width, this.height);
-			this.texture(p, "uL", eye === "OS" ? this.dog : this.dog2, 0);
-			this.texture(p, "uR", eye === "OD" ? this.dog : this.dog2, 1);
+			this.target(blend, 0, this.width, this.height);
+			this.texture(p, "uL", eye === "OS" ? this.dog : dog2, 0);
+			this.texture(p, "uR", eye === "OD" ? this.dog : dog2, 1);
 			this.uniform(
 				p,
 				"uWR",
@@ -526,7 +575,7 @@ export class DogsightGL {
 			this.uniform(p, "uBino", comp.derived.binocular_overlap_deg / 2);
 			this.uniform(p, "uLinear", Number(this.floatRT));
 			this.draw();
-			current = this.blend;
+			current = blend;
 		}
 		const p = this.programs.temp;
 		gl.useProgram(p);
