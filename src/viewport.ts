@@ -1,12 +1,17 @@
-import { $ } from "./dom";
 import { clamp } from "./model";
 import type { Vec2, Vec3, Vec4, ViewState } from "./types";
 
-interface ViewportActions {
+export interface ViewportMetrics {
+	readonly splitPercent: number;
+	readonly zoomLabel: string;
+}
+
+export interface ViewportActions {
 	panoramaField: () => Vec2 | undefined;
 	canFocus: () => boolean;
 	focus: (uv: Vec2) => void;
 	onResize?: (rect: Vec4, background: Vec3) => void;
+	onMetrics?: (metrics: ViewportMetrics) => void;
 }
 
 type Gesture =
@@ -17,9 +22,12 @@ type Gesture =
 	| { type: "pinch"; distance: number; zoom: number };
 
 export class DogsightViewport {
-	private host = $("#vp");
+	private events = new AbortController();
+	private resizeObserver = new ResizeObserver(() => this.resize());
+	private themeObserver = new MutationObserver(() => this.readBackground());
 	private pointers = new Map<number, Vec2>();
 	private gesture?: Gesture;
+	private metrics?: ViewportMetrics;
 	private nativePixels = false;
 	private sourceWidth = 1;
 	private sourceHeight = 1;
@@ -27,29 +35,53 @@ export class DogsightViewport {
 	background: Vec3 = [0.03, 0.035, 0.05];
 
 	constructor(
+		private host: HTMLElement,
 		private canvas: HTMLCanvasElement,
 		private view: ViewState,
 		private changed: () => void,
 		private actions: ViewportActions,
 	) {
-		new ResizeObserver(() => this.resize()).observe(this.host);
-		matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () =>
-			this.readBackground(),
+		this.resizeObserver.observe(host);
+		matchMedia("(prefers-color-scheme: dark)").addEventListener(
+			"change",
+			() => this.readBackground(),
+			{ signal: this.events.signal },
 		);
-		new MutationObserver(() => this.readBackground()).observe(
-			document.documentElement,
-			{ attributes: true, attributeFilter: ["data-theme"] },
-		);
+		this.themeObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["data-theme"],
+		});
 		this.bindPointers();
 		this.readBackground();
 		this.resize();
 	}
 
-	setSourceSize(width: number, height: number) {
+	dispose() {
+		this.events.abort();
+		this.resizeObserver.disconnect();
+		this.themeObserver.disconnect();
+		for (const id of this.pointers.keys()) {
+			if (this.host.hasPointerCapture(id)) this.host.releasePointerCapture(id);
+		}
+		this.pointers.clear();
+		this.gesture = undefined;
+	}
+
+	get isNativeZoom() {
+		return this.nativePixels;
+	}
+
+	setSourceSize(
+		width: number,
+		height: number,
+		zoom: "fit" | "current" | "native" = "fit",
+	) {
 		this.sourceWidth = width;
 		this.sourceHeight = height;
-		this.center();
+		this.nativePixels = zoom === "native";
 		this.fitRect();
+		if (zoom === "fit") this.center();
+		else this.viewChanged();
 	}
 
 	center() {
@@ -57,6 +89,27 @@ export class DogsightViewport {
 		this.view.zoom = 1;
 		this.view.cx = this.view.cy = 0.5;
 		this.view.yaw = this.view.pitch = 0;
+		this.viewChanged();
+	}
+
+	zoomIn() {
+		this.zoomAt(this.view.zoom * 1.5);
+	}
+
+	zoomOut() {
+		this.zoomAt(this.view.zoom / 1.5);
+	}
+
+	zoomFit() {
+		this.zoomAt(1);
+	}
+
+	zoomNative() {
+		this.zoomAt(this.nativeZoom(), undefined, undefined, true);
+	}
+
+	private viewChanged() {
+		this.placeControls();
 		this.changed();
 	}
 
@@ -65,13 +118,15 @@ export class DogsightViewport {
 		const dpr = Math.min(window.devicePixelRatio || 1, 2);
 		const width = Math.max(1, Math.round(css.width * dpr));
 		const height = Math.max(1, Math.round(css.height * dpr));
-		if (this.canvas.width === width && this.canvas.height === height) return;
-		this.canvas.width = width;
-		this.canvas.height = height;
+		const resized =
+			this.canvas.width !== width || this.canvas.height !== height;
+		if (resized) {
+			this.canvas.width = width;
+			this.canvas.height = height;
+		}
 		this.fitRect();
-		this.actions.onResize?.(this.rect, this.background);
-		this.placeControls();
-		this.changed();
+		if (resized) this.actions.onResize?.(this.rect, this.background);
+		this.viewChanged();
 	}
 
 	private fitRect() {
@@ -99,15 +154,20 @@ export class DogsightViewport {
 	}
 
 	placeControls() {
-		const view = this.view;
-		const split = $("#split");
-		split.hidden = view.mode !== 0;
-		split.style.left = `${(this.splitX() / this.canvas.width) * 100}%`;
-		$("#tagL").hidden = view.mode === 1;
-		$("#tagR").hidden = view.mode === 2;
-		const percent = Math.round((view.zoom / this.nativeZoom()) * 100);
-		$("#zlabel").textContent =
-			view.zoom === 1 && !this.nativePixels ? "Fit" : `${percent}%`;
+		const { width } = this.canvas;
+		const { zoom } = this.view;
+		const splitPercent = width === 0 ? 50 : (this.splitX() / width) * 100;
+		const zoomLabel =
+			zoom === 1 && !this.nativePixels
+				? "Fit"
+				: `${Math.round((zoom / this.nativeZoom()) * 100)}%`;
+		if (
+			this.metrics?.splitPercent === splitPercent &&
+			this.metrics.zoomLabel === zoomLabel
+		)
+			return;
+		this.metrics = { splitPercent, zoomLabel };
+		this.actions.onMetrics?.(this.metrics);
 	}
 
 	private nativeZoom() {
@@ -144,7 +204,7 @@ export class DogsightViewport {
 
 	private setSplit(x: number) {
 		this.view.split = clamp((x - this.rect[0]) / this.rect[2], 0, 1);
-		this.changed();
+		this.viewChanged();
 	}
 
 	private clampCenter() {
@@ -171,7 +231,7 @@ export class DogsightViewport {
 		view.cy += dy / view.zoom - dy / zoom;
 		view.zoom = zoom;
 		this.clampCenter();
-		this.changed();
+		this.viewChanged();
 	}
 
 	private pinchDistance() {
@@ -182,7 +242,8 @@ export class DogsightViewport {
 	private bindPointers() {
 		const vp = this.host,
 			view = this.view;
-		vp.addEventListener("pointerdown", (event) => {
+		const { signal } = this.events;
+		const down = (event: PointerEvent) => {
 			if (this.pointers.size >= 2) return;
 			vp.setPointerCapture(event.pointerId);
 			const point = this.point(event);
@@ -216,8 +277,8 @@ export class DogsightViewport {
 			} else {
 				this.gesture = { type: "pan", point, cx: view.cx, cy: view.cy };
 			}
-		});
-		vp.addEventListener("pointermove", (event) => {
+		};
+		const move = (event: PointerEvent) => {
 			if (!this.pointers.has(event.pointerId)) return;
 			const [x, y] = this.point(event);
 			this.pointers.set(event.pointerId, [x, y]);
@@ -248,12 +309,12 @@ export class DogsightViewport {
 			) {
 				this.zoomAt((start.zoom * this.pinchDistance()) / start.distance);
 			}
-		});
+		};
 		const end = (event: PointerEvent) => {
 			this.pointers.delete(event.pointerId);
 			if (this.pointers.size === 0) this.gesture = undefined;
 		};
-		vp.addEventListener("pointerup", (event) => {
+		const up = (event: PointerEvent) => {
 			const start = this.gesture;
 			if (
 				this.actions.canFocus() &&
@@ -270,41 +331,35 @@ export class DogsightViewport {
 					this.focus(point);
 			}
 			end(event);
-		});
-		vp.addEventListener("pointercancel", end);
-		vp.addEventListener("lostpointercapture", end);
-		vp.addEventListener(
-			"wheel",
-			(event) => {
-				event.preventDefault();
-				const delta =
-					event.deltaMode === WheelEvent.DOM_DELTA_LINE
-						? event.deltaY * 16
-						: event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-							? event.deltaY * vp.clientHeight
-							: event.deltaY;
-				this.zoomAt(
-					view.zoom * Math.exp(-delta * 0.0015),
-					...this.point(event),
-				);
-			},
-			{ passive: false },
-		);
-		vp.addEventListener("dblclick", (event) => {
+		};
+		const wheel = (event: WheelEvent) => {
+			event.preventDefault();
+			const delta =
+				event.deltaMode === WheelEvent.DOM_DELTA_LINE
+					? event.deltaY * 16
+					: event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+						? event.deltaY * vp.clientHeight
+						: event.deltaY;
+			this.zoomAt(view.zoom * Math.exp(-delta * 0.0015), ...this.point(event));
+		};
+		const doubleClick = (event: MouseEvent) => {
 			event.preventDefault();
 			if (this.actions.panoramaField()) this.center();
-			else this.zoomAt(1);
-		});
+			else this.zoomFit();
+		};
+
+		vp.addEventListener("pointerdown", down, { signal });
+		vp.addEventListener("pointermove", move, { signal });
+		vp.addEventListener("pointerup", up, { signal });
+		vp.addEventListener("pointercancel", end, { signal });
+		vp.addEventListener("lostpointercapture", end, { signal });
+		vp.addEventListener("wheel", wheel, { passive: false, signal });
+		vp.addEventListener("dblclick", doubleClick, { signal });
 		// Prevent iOS Safari page-level gesture zoom so the fixed chrome cannot get stuck zoomed in.
 		document.addEventListener(
 			"gesturestart",
 			(event) => event.preventDefault(),
-			{ passive: false },
+			{ passive: false, signal },
 		);
-		$("#zin").onclick = () => this.zoomAt(view.zoom * 1.5);
-		$("#zout").onclick = () => this.zoomAt(view.zoom / 1.5);
-		$("#zlabel").onclick = () => this.zoomAt(1);
-		$("#z11").onclick = () =>
-			this.zoomAt(this.nativeZoom(), undefined, undefined, true);
 	}
 }

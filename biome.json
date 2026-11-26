@@ -1,7 +1,7 @@
 {
 	"files": {
 		"includes": [
-			"**/*.{ts,js,css,json,html}",
+			"**/*.{ts,tsx,js,css,json,html}",
 			"!**/site",
 			"!**/node_modules",
 			"!tests/out",

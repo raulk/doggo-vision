@@ -4,8 +4,9 @@
 		"suspicious": "error",
 		"perf": "error"
 	},
-	"plugins": ["typescript"],
+	"plugins": ["typescript", "react"],
 	"rules": {
-		"eslint/no-underscore-dangle": ["error", { "allow": ["__dogsight"] }]
+		"eslint/no-underscore-dangle": ["error", { "allow": ["__dogsight"] }],
+		"react/react-in-jsx-scope": "off"
 	}
 }
