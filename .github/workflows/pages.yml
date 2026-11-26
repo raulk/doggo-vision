@@ -1,5 +1,4 @@
-# Publishes site/ (the built single-file app) to GitHub Pages on every push to main.
-# Run ./build.sh and commit site/ before pushing; this workflow does not build.
+# Builds the single-file app from src/ and publishes site/ to GitHub Pages on every push to main.
 name: Deploy to GitHub Pages
 
 on:
@@ -24,10 +23,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Check site/ is up to date with src/
-        run: |
-          ./build.sh
-          git diff --exit-code -- site/ || { echo "::error::site/ is stale. Run ./build.sh and commit."; exit 1; }
+      - name: Build
+        run: ./build.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -44,23 +44,18 @@ Read more:
 
 ## Run it locally
 
-There is no build step to serve it. It is one static HTML file.
+The app is one static HTML file, assembled from `src/` by a shell script.
 
 ```sh
 git clone https://github.com/raulk/dogsight
 cd dogsight
-python3 -m http.server -d site 8000   # then open http://localhost:8000
+./build.sh                             # writes site/index.html
+python3 -m http.server -d site 8000    # then open http://localhost:8000
 ```
 
 The live camera needs a secure origin: `localhost` works on the same machine, and a phone needs HTTPS (for example the deployed site, or a tunnel).
 
-To change the simulator, edit `src/` and rebuild:
-
-```sh
-./build.sh   # writes site/index.html (the site) and dist/artifact.html (a preview build without the camera)
-```
-
-Commit `src/` and both outputs.
+To change the simulator, edit `src/` and run `./build.sh` again. The build outputs (`site/index.html`, and `dist/artifact.html`, a body-only preview build without the camera) are not committed.
 
 ### Layout
 
@@ -78,14 +73,14 @@ One composite shader follows the path of light through the eye, in this order: l
 ```sh
 npm install playwright        # Chromium must be available to Playwright
 pip install numpy pillow
-node tests/probe.js tests/out && python3 tests/realism.py tests/out
+./build.sh && node tests/probe.js tests/out && python3 tests/realism.py tests/out
 ```
 
 `probe.js` renders 50%-contrast sine gratings (1–16 cpd) and a 0.5° point light through each senior preset in headless Chromium. `realism.py` measures each eye's acuity cutoff, the 1/θ² falloff of the glare veil, and the scattered-light fraction, and fails if any is outside its target range.
 
 ## Deploying
 
-GitHub Pages serves `site/` as it is. The workflow in `.github/workflows/pages.yml` publishes it on every push to `main`, so after editing `src/`, run `./build.sh` and commit the output. To set it up on a fork, open **Settings → Pages** and set **Source** to **GitHub Actions**.
+The workflow in `.github/workflows/pages.yml` runs `./build.sh` and publishes `site/` to GitHub Pages on every push to `main`. To set it up on a fork, open **Settings → Pages** and set **Source** to **GitHub Actions**.
 
 ## Licence
 

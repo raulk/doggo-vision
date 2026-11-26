@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds two single-file outputs from src/:
-#   site/index.html        standalone site (Cloudflare Workers static assets; camera works over https)
+#   site/index.html        standalone site (GitHub Pages; camera works over https)
 #   dist/artifact.html     page body for the claude.ai artifact preview (no camera there)
 set -euo pipefail
 cd "$(dirname "$0")"
