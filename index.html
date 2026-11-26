@@ -38,11 +38,12 @@
   <header class="bar topbar">
     <button type="button" class="title" id="presetBtn" aria-label="Choose a dog">
       <small>Dogsight</small>
-      <span id="presetName">Senior, 15: both eyes</span>
+      <span id="presetName">Adult Labrador</span>
     </button>
     <div class="icons">
       <button type="button" class="ib" id="srcBtn" aria-haspopup="true" aria-expanded="false" title="Image source"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg><span class="ibl">Source</span></button>
       <button type="button" class="ib" id="viewBtn" aria-haspopup="true" aria-expanded="false" title="View"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg><span class="ibl">View</span></button>
+      <button type="button" class="ib" id="depthBtn" aria-haspopup="true" aria-expanded="false" title="Depth &amp; focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 7.5 12 12l9-4.5Z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><span class="ibl">Depth</span><span class="dot" id="depthDot" hidden></span></button>
       <button type="button" class="ib" id="save" hidden title="Save dog view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg><span class="ibl">Save</span></button>
       <button type="button" class="ib" id="menuBtn" aria-expanded="false" aria-controls="drawer" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h4"/><path d="M12 17h8"/><circle cx="10" cy="17" r="2"/></svg><span class="ibl">Settings</span><span class="dot" id="ccount" hidden>0</span></button>
     </div>
@@ -79,6 +80,18 @@
       <option value="3" disabled>Depth map</option>
     </select>
     <label class="mcheck"><input type="checkbox" id="hudToggle"> Show readouts</label>
+  </div>
+
+  <div class="menu depth-menu" id="depthMenu" hidden>
+    <div class="mlabel">Depth &amp; focus</div>
+    <p class="note" id="depthSource"></p>
+    <div id="depthCtl"></div>
+    <button type="button" class="pill" id="estimateDepth" hidden>Estimate depth (on-device AI, ~24 MB)</button>
+    <p class="note" id="depthStatus" role="status" hidden></p>
+    <label class="mcheck" id="depthOverlayWrap" hidden><input type="checkbox" id="depthOverlayToggle"> Show depth map</label>
+    <div id="depthCalibration" hidden>
+      <p class="note">Shift-click or tap an object to focus there.</p>
+    </div>
   </div>
 
   <div class="bar bottombar">
@@ -131,11 +144,6 @@
         <p class="lede">These describe the photo. Acuity is drawn to scale for the field of view you set, so zoom to 1:1 to judge fine detail.</p>
         <div id="sceneCtl"></div>
         <button type="button" class="pill" id="centerView" hidden>Center view</button>
-        <button type="button" class="pill" id="estimateDepth" hidden>Estimate depth (on-device AI, ~24 MB)</button>
-        <p class="note" id="depthStatus" role="status" hidden></p>
-        <div id="depthCalibration" hidden>
-          <p class="note">Shift-click or tap an object to focus there.</p>
-        </div>
         <button type="button" class="pill" id="snapAdapted" hidden>Snap adapted</button>
       </div>
 

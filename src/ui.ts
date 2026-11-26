@@ -355,21 +355,6 @@ export function createUI(
 			hint: "How much of the world the photo spans. A phone camera is about 65°.",
 		});
 		imageFov.id = "imageFov";
-		slider(sc, {
-			label: "Distance to subject",
-			min: 0,
-			max: 1000,
-			step: 1,
-			get: () => S().dist,
-			set: (v) => {
-				S().dist = v;
-				S().focusPoint = null;
-			},
-			toSlider: (d) => (Math.log(d / 0.05) / Math.log(50 / 0.05)) * 1000,
-			fromSlider: (s) => 0.05 * Math.pow(50 / 0.05, s / 1000),
-			fmt: (v) => (v < 1 ? Math.round(v * 100) + " cm" : v.toFixed(1) + " m"),
-			hint: "Dogs accommodate only 2 to 3 D, so anything nearer than about 40 cm blurs.",
-		});
 		select(sc, {
 			label: "Projection",
 			opts: [
@@ -384,13 +369,46 @@ export function createUI(
 		});
 		$("#centerView").onclick = actions.centerView;
 		sc.append($("#centerView"));
-		check(sc, {
+		select(sc, {
+			label: "Dark adaptation",
+			opts: [
+				["instant", "Instant (steady state)"],
+				["preview", "Fast preview (60×)"],
+				["realtime", "Real-time (25–30 min)"],
+			],
+			get: () => S().adaptMode,
+			set: (mode) => (S().adaptMode = mode),
+			keepPreset: true,
+			after: syncSourceControls,
+		});
+		$("#snapAdapted").onclick = actions.snapAdaptation;
+		sc.append($("#snapAdapted"));
+
+		const dc = $("#depthCtl");
+		check(dc, {
 			label: "Per-pixel depth defocus",
 			get: () => S().depthEnabled,
 			set: (enabled) => {
 				S().depthEnabled = enabled;
+				syncSourceControls();
 				actions.updateDepth();
 			},
+			keepPreset: true,
+		});
+		slider(dc, {
+			label: "Focus distance",
+			min: 0,
+			max: 1000,
+			step: 1,
+			get: () => S().dist,
+			set: (v) => {
+				S().dist = v;
+				S().focusPoint = null;
+			},
+			toSlider: (d) => (Math.log(d / 0.05) / Math.log(50 / 0.05)) * 1000,
+			fromSlider: (s) => 0.05 * Math.pow(50 / 0.05, s / 1000),
+			fmt: (v) => (v < 1 ? Math.round(v * 100) + " cm" : v.toFixed(1) + " m"),
+			hint: "Dogs accommodate only 2 to 3 D, so anything nearer than about 40 cm blurs.",
 			keepPreset: true,
 		});
 		const estimate = $("#estimateDepth");
@@ -400,7 +418,6 @@ export function createUI(
 			syncAll();
 			invalidate();
 		};
-		sc.append(estimate, $("#depthStatus"), $("#depthCalibration"));
 		slider($("#depthCalibration"), {
 			label: "Near depth calibration",
 			min: 0.1,
@@ -421,20 +438,6 @@ export function createUI(
 			fmt: (v) => `${v.toFixed(1)} m`,
 			keepPreset: true,
 		});
-		select(sc, {
-			label: "Dark adaptation",
-			opts: [
-				["instant", "Instant (steady state)"],
-				["preview", "Fast preview (60×)"],
-				["realtime", "Real-time (25–30 min)"],
-			],
-			get: () => S().adaptMode,
-			set: (mode) => (S().adaptMode = mode),
-			keepPreset: true,
-			after: syncSourceControls,
-		});
-		$("#snapAdapted").onclick = actions.snapAdaptation;
-		sc.append($("#snapAdapted"));
 		check(sc, {
 			label: "Show muzzle silhouette",
 			keepPreset: true,
@@ -850,7 +853,7 @@ export function createUI(
 				: state.view.overlay === 2
 					? `<span class="chip">Dashed lines: binocular zone ±${Math.round(d.binocular_overlap_deg / 2)}°${comp.U.uTunnel[0] < 179 ? " · blue ring: remaining field" : ""}</span>`
 					: state.view.overlay === 3
-						? '<span class="chip">Relative depth · white is nearer</span>'
+						? `<span class="chip">${source?.depth?.metric ? "Metric depth" : "Relative depth"} · white is nearer</span>`
 						: "";
 		const hud = $("#hud");
 		hud.hidden = !(state.view.hud || ov);
@@ -914,7 +917,11 @@ export function createUI(
 			`<div><i style="background:var(--fg);opacity:.55"></i>Binocular ${B}°</div><div><i style="background:var(--fg);opacity:.15;border:1px solid var(--fg)"></i>Total field ${F}°</div><div><i style="background:var(--glass-2);border:1px solid var(--line)"></i>Blind behind ${360 - F}°</div><div style="color:var(--muted)">Field sizes by skull type are working values with no primary source.</div>`;
 	}
 
-	const menus = { srcBtn: "srcMenu", viewBtn: "viewMenu" };
+	const menus = {
+		srcBtn: "srcMenu",
+		viewBtn: "viewMenu",
+		depthBtn: "depthMenu",
+	};
 	function closeMenus(except?: string) {
 		for (const [button, menu] of Object.entries(menus)) {
 			if (button === except) continue;
@@ -952,8 +959,15 @@ export function createUI(
 				actions.redraw();
 			};
 		const overlay = $<HTMLSelectElement>("#overlay");
+		const depthOverlayToggle = $<HTMLInputElement>("#depthOverlayToggle");
 		overlay.onchange = () => {
 			state.view.overlay = Number(overlay.value);
+			depthOverlayToggle.checked = state.view.overlay === 3;
+			invalidate();
+		};
+		depthOverlayToggle.onchange = () => {
+			state.view.overlay = depthOverlayToggle.checked ? 3 : 0;
+			overlay.value = String(state.view.overlay);
 			invalidate();
 		};
 		for (const b of $$("#samples button"))
@@ -989,7 +1003,7 @@ export function createUI(
 		document.addEventListener("pointerdown", (event) => {
 			if (
 				!(event.target instanceof Element) ||
-				!event.target.closest(".menu, #srcBtn, #viewBtn")
+				!event.target.closest(".menu, #srcBtn, #viewBtn, #depthBtn")
 			)
 				closeMenus();
 		});
@@ -1160,17 +1174,38 @@ export function createUI(
 
 	function syncSourceControls() {
 		const { current } = media;
-		const hasDepth = !!current?.depth;
+		const depth = current?.depth;
+		const hasDepth = !!depth;
 		$("#centerView").hidden = !activePanorama();
 		$("#imageFov").hidden = !$("#centerView").hidden;
 		$("#snapAdapted").hidden = state.scene.adaptMode === "instant";
+		$("#depthDot").hidden = !state.scene.depthEnabled;
 		$("#estimateDepth").hidden = current?.kind !== "image" || hasDepth;
+		$("#depthOverlayWrap").hidden = !hasDepth;
 		$("#depthCalibration").hidden = !hasDepth || !state.scene.depthEnabled;
+		const sourceNote = $("#depthSource");
+		if (current?.kind === "video") {
+			sourceNote.textContent = "Per-pixel depth is available for still images.";
+		} else if (depth?.kind === "embedded") {
+			const label = depth.label ?? "Embedded depth";
+			sourceNote.textContent = depth.metric
+				? `${label} · ${depth.nearM.toFixed(2)}–${depth.farM.toFixed(1)} m (metric)`
+				: `${label} · relative`;
+		} else if (depth?.kind === "procedural") {
+			sourceNote.textContent = `Built-in scene depth · ${depth.nearM.toFixed(2)}–${depth.farM.toFixed(1)} m`;
+		} else if (depth?.kind === "estimated") {
+			sourceNote.textContent = "On-device AI depth · relative";
+		} else {
+			sourceNote.textContent =
+				"No embedded depth in this photo. Estimate on-device or use focus distance.";
+		}
 		$<HTMLOptionElement>('#overlay option[value="3"]').disabled = !hasDepth;
 		if (!hasDepth && state.view.overlay === 3) {
 			state.view.overlay = 0;
 			$<HTMLSelectElement>("#overlay").value = "0";
 		}
+		$<HTMLInputElement>("#depthOverlayToggle").checked =
+			state.view.overlay === 3;
 	}
 
 	function depthStatus(message: string, busy: boolean) {

@@ -5,7 +5,9 @@ import {
 	inspectHdrJpegHeader,
 } from "purejsimage/hdr";
 import { clamp } from "./model";
+import { decodeEmbeddedDepth, extractEmbeddedDepth } from "./photo-depth";
 import type {
+	EmbeddedDepthInfo,
 	GainMapInfo,
 	Orientation,
 	PanoramaInfo,
@@ -278,11 +280,12 @@ export function gainMapTransfer(
 async function extractGainMap(
 	file: Blob,
 	makerNote: unknown,
+	preloadedJpeg?: Awaited<ReturnType<typeof inspectHdrJpeg>>,
 ): Promise<GainMapInfo | undefined> {
 	const signature = new Uint8Array(await file.slice(0, 2).arrayBuffer());
 	if (signature[0] !== 0xff || signature[1] !== 0xd8) return;
 	const source = jpegSource(file);
-	const jpeg = await inspectHdrJpeg(source);
+	const jpeg = preloadedJpeg ?? (await inspectHdrJpeg(source));
 	const parameters = jpeg.iso ?? jpeg.ultraHdr;
 	if (jpeg.gainMap && parameters) {
 		const { start, end } = jpeg.gainMap;
@@ -360,10 +363,33 @@ export async function extractPhotoInfo(
 		width,
 		height,
 	);
-	metadata.gainMap = await extractGainMap(file, combined.MakerNote).catch(
+	const signature = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+	const jpeg =
+		signature[0] === 0xff && signature[1] === 0xd8
+			? await inspectHdrJpeg(jpegSource(file)).catch(() => undefined)
+			: undefined;
+	metadata.gainMap = await extractGainMap(file, combined.MakerNote, jpeg).catch(
+		() => undefined,
+	);
+	metadata.embeddedDepth = await extractEmbeddedDepth(file, jpeg).catch(
 		() => undefined,
 	);
 	return metadata;
+}
+
+export function decodePhotoDepth(
+	info: EmbeddedDepthInfo,
+	baseOrientation: Orientation | undefined,
+	width: number,
+	height: number,
+) {
+	return decodeEmbeddedDepth(
+		info,
+		baseOrientation,
+		width,
+		height,
+		gainMapRaster,
+	);
 }
 
 export async function gainMapRaster(
@@ -474,6 +500,7 @@ export function photoSummary(photo: PhotoMetadata, detailed = false) {
 		flashFired,
 		distM,
 		gainMap,
+		embeddedDepth,
 		panorama,
 	} = photo;
 	const camera = model?.toLowerCase().startsWith(make?.toLowerCase() ?? "")
@@ -494,6 +521,10 @@ export function photoSummary(photo: PhotoMetadata, detailed = false) {
 		flashFired && "flash fired — light level not auto-set",
 		distM !== undefined && `${Number(distM.toPrecision(3))} m subject distance`,
 		gainMap && `HDR +${Math.log2(gainMapHeadroom(gainMap)).toFixed(1)} EV`,
+		embeddedDepth &&
+			(embeddedDepth.metric
+				? `${embeddedDepth.label} (${embeddedDepth.nearM.toFixed(1)}–${embeddedDepth.farM.toFixed(1)} m)`
+				: embeddedDepth.label),
 	]
 		.filter(Boolean)
 		.join(" · ");

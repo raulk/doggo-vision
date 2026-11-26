@@ -29,9 +29,10 @@ function assertFinite(value: unknown) {
 }
 
 describe("optics", () => {
-	it("compiles all 17 presets for both eyes", () => {
+	it("compiles all 17 presets for both eyes and defaults to Adult Labrador", () => {
 		const state = createState();
 		expect(PRESETS).toHaveLength(17);
+		expect(PRESETS[0]?.id).toBe("lab");
 		for (const preset of PRESETS) {
 			applyPreset(state, preset);
 			for (const eye of ["OS", "OD"] as const)
@@ -129,7 +130,7 @@ describe("optics", () => {
 
 	it("preserves the calibrated pigment effect below the axial threshold", () => {
 		const state = createState();
-		applyPreset(state, PRESETS[1]!);
+		applyPreset(state, PRESETS.find((p) => p.id === "kcs15")!);
 		const withPigment = compile(state).U;
 		activeConditions(state).pigmentary_keratitis.on = false;
 		const clear = compile(state).U;
@@ -158,7 +159,7 @@ describe("eye state and imports", () => {
 		expect(activeConditions(state).kcs.on).toBe(false);
 		expect(state.eyes.OD.kcs.on).toBe(true);
 		state.binoc.dom = 0.83;
-		applyPreset(state, PRESETS[0]!);
+		applyPreset(state, PRESETS.find((p) => p.id === "kcs15both")!);
 		expect(state.binoc.dom).toBe(0.75);
 	});
 
@@ -272,7 +273,8 @@ describe("eye state and imports", () => {
 
 	it("keeps measured refraction and iris independent for each eye", () => {
 		const state = createState();
-		applyPreset(state, PRESETS[0]!);
+		const seniorBoth = PRESETS.find((p) => p.id === "kcs15both")!;
+		applyPreset(state, seniorBoth);
 		state.eyeOptics.OS = {
 			refraction_D: -1.25,
 			refractionMeasured: true,
@@ -307,7 +309,7 @@ describe("eye state and imports", () => {
 			iris: "blue",
 		});
 		expect(copy.eyeOptics.OS).toEqual(state.eyeOptics.OS);
-		applyPreset(copy, PRESETS[0]!);
+		applyPreset(copy, seniorBoth);
 		expect(copy.eyeOptics.OS.refractionMeasured).toBe(false);
 	});
 
@@ -320,7 +322,7 @@ describe("eye state and imports", () => {
 
 	it("round-trips binocular hypotheses and profiles with all KCS extras", () => {
 		const state = createState();
-		applyPreset(state, PRESETS[0]!);
+		applyPreset(state, PRESETS.find((p) => p.id === "kcs15both")!);
 		state.binoc.dom = 0.92;
 		Object.assign(state.eyes.OS.kcs.x, {
 			tbu: 3,

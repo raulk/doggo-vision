@@ -190,7 +190,23 @@ export interface DepthMap {
 	canvas: HTMLCanvasElement;
 	nearM: number;
 	farM: number;
-	kind: "procedural" | "estimated";
+	kind: "procedural" | "embedded" | "estimated";
+	metric?: boolean;
+	label?: string;
+}
+export interface EmbeddedDepthInfo {
+	format: "apple-jpeg" | "apple-heic" | "gdepth";
+	image: Blob;
+	representation: "inverse" | "linear";
+	nearM: number;
+	farM: number;
+	metric: boolean;
+	brighterIsNearer: boolean;
+	floatMin?: number;
+	floatMax?: number;
+	intMin: number;
+	intMax: number;
+	label: string;
 }
 export interface PhotoMetadata {
 	panorama?: PanoramaInfo;
@@ -204,6 +220,7 @@ export interface PhotoMetadata {
 	colorSpace?: string;
 	orientation?: Orientation;
 	gainMap?: GainMapInfo;
+	embeddedDepth?: EmbeddedDepthInfo;
 }
 export interface SourceMeta {
 	panorama?: PanoramaInfo;

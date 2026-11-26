@@ -112,6 +112,12 @@ export function editEye(state: AppState, eye: EyeId) {
 
 export const PRESETS: readonly Preset[] = [
 	{
+		id: "lab",
+		name: "Adult Labrador",
+		note: "Baseline: dichromat, 20/75",
+		p: ["labrador", 4],
+	},
+	{
 		id: "kcs15both",
 		name: "Senior, 15: both eyes",
 		note: "Both eyes blended: clearer right eye leads where the fields overlap",
@@ -161,12 +167,6 @@ export const PRESETS: readonly Preset[] = [
 		name: "Puppy, 10 weeks",
 		note: "Near-adult optics",
 		p: ["labrador", 10 / 52],
-	},
-	{
-		id: "lab",
-		name: "Adult Labrador",
-		note: "Baseline: dichromat, 20/75",
-		p: ["labrador", 4],
 	},
 	{
 		id: "greyhound",

@@ -80,6 +80,7 @@ function sourceChanged(source: MediaSource) {
 		hfov,
 		dist,
 		logL: logL ?? state.scene.logL,
+		depthEnabled: depth?.kind === "embedded" ? true : state.scene.depthEnabled,
 		depthNearM: depth?.nearM ?? 0.4,
 		depthFarM: depth?.farM ?? 25,
 		focusPoint: null,
@@ -230,7 +231,10 @@ function animate(now: number) {
 	frame(now);
 }
 
-applyPreset(state, PRESETS[0]!);
+applyPreset(
+	state,
+	PRESETS.find((preset) => preset.id === "lab") ?? PRESETS[0]!,
+);
 media.loadSample("yard");
 requestAnimationFrame(animate);
 

@@ -1,6 +1,17 @@
-import { decodeGainMap, extractPhotoInfo, photoSummary } from "./metadata";
+import {
+	decodeGainMap,
+	decodePhotoDepth,
+	extractPhotoInfo,
+	photoSummary,
+} from "./metadata";
 import { sample } from "./samples";
-import type { GainMapInfo, PhotoMetadata, SampleId, SourceMeta } from "./types";
+import type {
+	DepthMap,
+	GainMapInfo,
+	PhotoMetadata,
+	SampleId,
+	SourceMeta,
+} from "./types";
 
 const MAX_SIDE = 1600;
 export const COARSE = matchMedia("(pointer: coarse)").matches;
@@ -200,6 +211,19 @@ export class DogsightMedia {
 				photo.gainMap = undefined;
 			}
 		}
+		let depth: DepthMap | undefined;
+		if (photo.embeddedDepth) {
+			try {
+				depth = await decodePhotoDepth(
+					photo.embeddedDepth,
+					photo.orientation,
+					canvas.width,
+					canvas.height,
+				);
+			} catch {
+				photo.embeddedDepth = undefined;
+			}
+		}
 		if (token !== this.token) return;
 		this.replace({
 			kind: "image",
@@ -208,6 +232,7 @@ export class DogsightMedia {
 			photo,
 			panorama: photo.panorama,
 			gain,
+			depth,
 			hfov: photo.hfovDeg ?? 65,
 			dist: photo.distM ?? 3,
 			logL: photo.flashFired ? undefined : photo.logL,
