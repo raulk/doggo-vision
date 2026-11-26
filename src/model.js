@@ -58,7 +58,8 @@ const CONDS = [
   {id:'corneal_edema', g:'cornea', name:'Corneal edema', photo:'yes', d:'Blue-white corneal haze with coloured halos around lights.', s:0.5},
   {id:'corneal_ulcer', g:'cornea', name:'Corneal ulcer', photo:'partly', d:'Local haze and warp over the ulcer, tearing and a squint.', s:0.5},
   {id:'pannus', g:'cornea', name:'Pannus (CSK)', photo:'yes', d:'Pink-brown vascular tissue creeping in from the temporal cornea, veiling the nasal field.', s:0.4},
-  {id:'lipid_dystrophy', g:'cornea', name:'Corneal lipid deposits', photo:'yes', d:'Soft white veil, mild glare and a faint sparkle.', s:0.4},
+  {id:'corneal_scar', g:'cornea', name:'Corneal scarring', photo:'yes', d:'Grey-blue fibrous haze from long-term irritation such as dry eye. The cornea sits almost at the pupil, so the dog never sees it as patches or spots: it scatters light forward into a veil over the whole view, lowers contrast, softens detail and makes bright lights glare.', s:0.4},
+  {id:'lipid_dystrophy', g:'cornea', name:'Corneal lipid deposits', photo:'yes', d:'White crystalline deposits. Too close to the pupil to be seen as points: they add a soft veil and glare.', s:0.4},
   {id:'glaucoma', g:'uvea', name:'Glaucoma', photo:'partly', d:'Pressure causes edema, halos and dimming. Nerve damage closes the field with arc-shaped gaps.', s:0.4, extras:[{k:'damage', t:'num', label:'Nerve damage', min:0, max:1, step:0.01, def:0.4}]},
   {id:'uveitis', g:'uvea', name:'Uveitis', photo:'partly', d:'Aqueous flare fogs the view; a small pupil dims it; floaters drift; pus settles low in the chamber and hides the upper field.', s:0.45},
   {id:'hyphema', g:'uvea', name:'Hyphema', photo:'yes', d:'Blood in the chamber: red haze and an upper-field occluder as blood settles.', s:0.4},
@@ -135,6 +136,7 @@ function compile(state, srcInfo){
   const glS = sv('glaucoma'), glD = C.glaucoma && C.glaucoma.on ? ex('glaucoma', 'damage', 0.4) : 0;
   const uve = sv('uveitis'), hyp = sv('hyphema'), ia = clamp(0.3*smooth(0.6, 1.0, a)*(V.ageLens > 0 ? 1 : 0) + sv('iris_atrophy'), 0, 1);
   const nsC = sv('nuclear_sclerosis'), lux = sv('lens_luxation'), edema = sv('corneal_edema'), ulcer = sv('corneal_ulcer');
+  const scar = sv('corneal_scar');
   const pannus = sv('pannus'), lipid = sv('lipid_dystrophy'), horner = sv('horner'), cherry = sv('cherry_eye'), entro = sv('entropion');
   const sards = sv('sards'), on_ = sv('optic_neuritis'), ast = sv('asteroid_hyalosis'), dys = sv('retinal_dysplasia'), micro = sv('microphthalmia');
   const NSall = Math.max(NS, nsC);
@@ -151,7 +153,7 @@ function compile(state, srcInfo){
   let corneaB2 = 0, lensB2 = 0, opticsB2 = 0, retinaB2 = 0;
   const pkAx = clamp((pk - 0.7)/0.3, 0, 1);
   if(on[3]){
-    corneaB2 += q(pkAx > 0 ? lerp(fracB(0.02), fracB(0.06), pkAx) : 0) + q(fracB(0.015)*edema) + q(fracB(0.015)*glS) + q(fracB(0.003)*lipid)
+    corneaB2 += q(pkAx > 0 ? lerp(fracB(0.02), fracB(0.06), pkAx) : 0) + q(fracB(0.015)*edema) + q(fracB(0.015)*glS) + q(fracB(0.003)*lipid) + q(fracB(0.008)*scar)
       + q(pannus > 0.6 ? fracB(0.03)*(pannus - 0.6)/0.4 : 0) + q(fracB(0.006)*entro);
   }
   if(on[5]){
@@ -176,11 +178,11 @@ function compile(state, srcInfo){
   // ---- haze (additive, capped at 0.95)
   const hz = []; // [amount, rgb]
   if(on[3]){
-    hz.push([(brachy ? 0.1 : 0.03) + 0.03*Math.max(0, age - 6) + 0.2*kcs, [1, 0.98, 0.95]]);
+    hz.push([(brachy ? 0.1 : 0.03) + Math.min(0.1, 0.012*Math.max(0, age - 6)) + 0.15*kcs, [1, 0.98, 0.95]]); // ageing cornea stays mostly clear
     hz.push([0.55*edema + 0.55*glS, [0.86, 0.93, 1]]);
-    hz.push([0.25*lipid, [1, 1, 1]]);
+    hz.push([0.25*lipid + 0.3*scar, [1, 1, 1]]);
     hz.push([0.2*pannus, [1, 0.85, 0.8]]);
-    hz.push([pkOrigin === 'diffuse' ? 0.35*pk : 0.12*pk, [0.85, 0.75, 0.65]]);
+    hz.push([0.05*pk, [1, 0.97, 0.94]]);
   }
   if(on[4]){ hz.push([0.45*uve, [1, 0.97, 0.9]]); hz.push([0.35*hyp, [1, 0.55, 0.5]]); }
   let hAmt = 0, hCol = [0, 0, 0];
@@ -199,7 +201,7 @@ function compile(state, srcInfo){
   // ---- contrast and luminance multipliers
   let contrast = 1, lum = 1, desat = 0;
   if(on[5]) contrast *= (1 - 0.10*NS)*(1 - 0.5*catAge)*(1 - 0.15*nsC);
-  if(on[3]) { contrast *= (1 - (pkAx > 0 ? lerp(0.4, 0.9, pkAx) : 0))*(1 - 0.3*pannus)*(1 - 0.3*edema)*(1 - 0.25*glS); lum *= (1 - (pkAx > 0 ? lerp(0.3, 0.8, pkAx) : 0))*(1 - (pkOrigin === 'diffuse' ? 0.3 : 0.45)*pk*(1 - pkAx)); }
+  if(on[3]) { contrast *= (1 - 0.3*scar)*(1 - (pkAx > 0 ? lerp(0.4, 0.9, pkAx) : 0))*(1 - 0.3*pannus)*(1 - 0.3*edema)*(1 - 0.25*glS); lum *= (1 - (pkAx > 0 ? lerp(0.3, 0.8, pkAx) : 0))*(1 - (pkOrigin === 'diffuse' ? 0.3 : 0.45)*pk*(1 - pkAx)); }
   if(on[4]) { contrast *= (1 - 0.35*uve); lum *= (1 - 0.6*glS)*(1 - 0.35*horner)*(1 - 0.3*uve)*(1 - 0.3*hyp); desat += 0.2*uve; }
   if(on[6]) contrast *= 0.3 + 0.7*(closed ? 0 : dev);
   if(on[9]) {
@@ -216,13 +218,13 @@ function compile(state, srcInfo){
   const glareMult = (1 + 2*(1 - pig))*(1 + glareLens)*glarePupil*(brachy ? 1.2 : 1);
   let bloom = 0;
   if(on[5]) bloom += (cat > 0 ? 0.2 + 1.5*cat : 0) + 0.3*nsC + 0.3*glareLens;
-  if(on[3]) bloom += 0.6*kcs + 0.4*lipid + 0.4*edema + 0.5*glS;
+  if(on[3]) bloom += 0.6*kcs + 0.4*lipid + 0.6*scar + 0.4*edema + 0.5*glS;
   if(on[4]) bloom += 1.0*ia;
   if(on[9]) bloom += 0.4*pra;
   bloom = on[10] ? Math.min(3, bloom*(1 + 2*(1 - pig))*Math.sqrt(glarePupil)*(brachy ? 1.2 : 1)) : 0;
   const bloomDeg = cat > 0 ? lerp(frac(0.03), frac(0.15), cat) : 4;
   const halo = on[3] ? Math.min(2, 0.8*edema + 0.8*glS) : 0;
-  const veil = on[10] ? V.veil*glareMult : 0;
+  const veil = on[10] ? V.veil*glareMult*(on[3] ? 1 + 3*scar + 1.5*lipid + 1.5*kcs : 1) : 0;
 
   // ---- ghost
   let ghost = [0, 0, 0, 0];
@@ -282,6 +284,7 @@ function compile(state, srcInfo){
   let gain = Math.min(1, humanB*night)*ret*lum*2**ev;
   if(closed && on[6]) gain *= 0.12;
   const tint = [1, 1, 1];
+  if(on[3] && pk > 0 && pkOrigin === 'diffuse'){ const w = 0.6*pk; tint[0] *= 1 - 0.15*w; tint[1] *= 1 - 0.25*w; tint[2] *= 1 - 0.35*w; } // melanin over the pupil: dimmer, warmer
   if(on[5]){ const bg = (1 - 0.15*NS)*(1 - 0.1*nsC); tint[2] *= bg; }
   if(closed && on[6]){ tint[0] *= 1; tint[1] *= 0.35; tint[2] *= 0.3; }
   const noise = on[10] ? V.noise*Math.pow(m, 1.2)*0.12 + (on[9] ? 0.1*sN*m : 0) : 0;
@@ -296,7 +299,7 @@ function compile(state, srcInfo){
   // particles
   let part = [0, 0];
   if(on[11]){ if(ast > 0) part = [0.15 + 0.5*ast, 0]; else if(uve > 0.2) part = [0.08 + 0.3*uve, 1]; }
-  const sparkle = on[5] && hyper && cat > 0 ? 1 : (on[3] && lipid > 0 ? 0.35*lipid : 0);
+  const sparkle = 0;
 
   const blurG = Math.sqrt(corneaB2 + lensB2 + opticsB2 + retinaB2);
   const csf = on[8] ? V.csf*(1 + 1.5*m) : 0;
@@ -315,7 +318,7 @@ function compile(state, srcInfo){
     uGain: gain, uLower: lower, uNoise: noise, uPart: [part[0], part[1], 0],
     uZone: [B/2, F/2], occ,
   };
-  const kcsState = kcsOn ? {s:kcs, tbu: ex('kcs', 'tbu', 20*(1 - kcs) + kcs), interval: ex('kcs', 'blink', 6), mucus: ex('kcs', 'mucus', 0.5), sigmaMax: fracB(0.03)} : null;
+  const kcsState = kcsOn ? {s:kcs, tbu: ex('kcs', 'tbu', 20*(1 - kcs) + kcs), interval: ex('kcs', 'blink', 6), mucus: ex('kcs', 'mucus', 0.5), sigmaMax: fracB(0.012)} : null;
 
   const derived = {
     a: +a.toFixed(3), streak_strength: +s.toFixed(2), skull: skullOf(P.ci), field_total_deg: Math.round(F), binocular_overlap_deg: Math.round(B),
@@ -343,7 +346,7 @@ function compile(state, srcInfo){
     occluders: occ.map(o => ({kind:o.kind, field_wedge:{dir_deg: Math.round(Math.atan2(o.dir[1], o.dir[0])*180/Math.PI), edge_deg: +o.edge.toFixed(1), soft_deg:o.soft}, transmission: +(1 - o.dens).toFixed(2), tint_rgb:o.tint})),
     distortion: {amp_frac: kcsOn ? +(0.015*kcs).toFixed(4) : 0, freq: 3, time_varying: kcsOn},
     ghost: {alpha: +ghost[0].toFixed(2), offset_frac: [+(ghost[1]/REF_FOV).toFixed(3), +(ghost[2]/REF_FOV).toFixed(3)], blur_frac: +(ghost[3]/REF_BLUR).toFixed(4), wobble_hz: lux > 0 ? 3 : 0},
-    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: kcsState.interval, sigma_max_frac: +(0.03*kcs).toFixed(3), mucus_alpha: +(0.7*kcsState.mucus*kcs).toFixed(2)} : {enabled:false},
+    tear_film: kcsState ? {enabled:true, breakup_time_s: +kcsState.tbu.toFixed(1), blink_interval_s: kcsState.interval, sigma_max_frac: +(0.012*kcs).toFixed(3), mucus_alpha: +(0.7*kcsState.mucus*kcs).toFixed(2)} : {enabled:false},
     aperture: {top: +lidTop.toFixed(2), bottom: +lidBot.toFixed(2), nasal_inferior: +third.toFixed(2), bright_squint: +sq.toFixed(2)},
     particles: {count: Math.round(part[0]*200), kind: part[0] > 0 ? (part[1] > 0.5 ? 'floater' : 'asteroid') : null, settle_s: 2.0},
     photophobia: {exposure_ev_bright: +ev.toFixed(2)},

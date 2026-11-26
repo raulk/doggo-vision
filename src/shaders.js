@@ -143,10 +143,8 @@ void main(){
     c *= (Ls + d*k)/max(L, 1e-4);
   }
 
-  if(uMucus > 0.0){
-    float st = vnoise(vec2(vUv.x*3.0 + uTime*0.03, vUv.y*22.0 + sin(vUv.x*4.0)*0.8));
-    c = mix(c, lm*1.08 + 0.015, uMucus*smoothstep(0.55, 0.85, st));
-  }
+  // Mucus on the cornea is in the pupil plane: it smears the whole image (detail toward local mean), not patches of it
+  if(uMucus > 0.0) c = mix(c, lm*1.02 + 0.01, uMucus*0.6);
 
   // ---- Stage 5: lens haze with spatial mask by cataract type, then contrast loss
   float r65 = r/65.0; float cm = 1.0;
@@ -236,9 +234,10 @@ void main(){
   if(uLid.x > 0.0 || uLid.y > 0.0 || uLid.w > 0.0){
     float top = uLid.x + uLid.w*0.6, bot = uLid.y + uLid.w*0.55;
     float yT = 1.0 - top*(1.15 - 0.3*x*x), yB = bot*(1.15 - 0.3*x*x);
-    float mT = top > 0.0 ? smoothstep(yT - 0.07, yT + 0.07, vUv.y) : 0.0;
-    float mB = bot > 0.0 ? 1.0 - smoothstep(yB - 0.07, yB + 0.07, vUv.y) : 0.0;
-    c = mix(c, c*vec3(0.12, 0.035, 0.03) + vec3(0.004, 0.001, 0.001), max(mT, mB));
+    // a lid edge a few mm from the pupil is a very defocused aperture: a broad dark gradient, not a band
+    float mT = top > 0.0 ? smoothstep(yT - 0.2, yT + 0.2, vUv.y) : 0.0;
+    float mB = bot > 0.0 ? 1.0 - smoothstep(yB - 0.2, yB + 0.2, vUv.y) : 0.0;
+    c = mix(c, c*vec3(0.1, 0.085, 0.08), max(mT, mB));
   }
   if(uThird > 0.0){
     float asp = uSize.x/uSize.y;
