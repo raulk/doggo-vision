@@ -804,5 +804,5 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { re
 new MutationObserver(() => { readBg(); dirty = true; }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
 resize();
 loadSample('yard');
-markPreset();
+applyPreset(PRESETS.find(p => p.id === 'kcs15both')); // default: Raúl's dog, both eyes
 requestAnimationFrame(frame);
