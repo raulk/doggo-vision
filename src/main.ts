@@ -54,6 +54,10 @@ const viewport = new DogsightViewport(canvas, state.view, redraw, {
 	},
 	canFocus: () => state.scene.depthEnabled && !!media.current?.depth,
 	focus: focusAt,
+	onResize: () => {
+		renderer?.display(state, viewport.rect, viewport.background);
+		viewport.placeControls();
+	},
 });
 const media = new DogsightMedia(sourceChanged, toast, cameraBlocked);
 const ui = createUI(state, media, {

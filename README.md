@@ -17,19 +17,16 @@ A browser simulator of how a dog sees: dichromat colour, low acuity that depends
 | ![Night street, human view and senior dog view](docs/images/street-split-senior.jpg) | ![Garden, human view and adult Labrador view](docs/images/yard-split-adult.jpg) |
 | Night street through the "Senior, 15: both eyes" preset. Lamps scatter into a veil, because the cloudy cornea and the old lens spread light. | The same garden through an adult Labrador's eyes. Reds and greens collapse onto one yellow–brown axis, and detail softens to about a fifth of typical human sharpness. |
 
-- **Colour:** dogs have two cone types, not three. The colour matrix comes from dog cone sensitivities, not from a human colour-blindness filter.
-- **Acuity:** about 6–12 cycles per degree for a typical adult dog, against 30–60 for a human. The sharpest region is a round spot in short-nosed dogs and a horizontal streak in long-nosed ones.
-- **Light:** rods take over in dim light, so the view gets brighter than a human's but blurrier and noisier.
-- **Age and disease:** 25 conditions along the light path, from dry eye and corneal haze to cataract, glaucoma and retinal atrophy. Each has a 0–1 severity.
-- **Both eyes.** Each eye stores its own conditions, iris colour and refraction. Measured total refraction bypasses the nuclear-sclerosis offset. In the overlap, the optically clearer eye leads the blend.
+## Features
 
-Photos you open can supply camera and lens details, field of view, scene luminance and subject distance through EXIF, XMP and ICC metadata. Flash exposures are shown in the Scene tab and leave the light-level setting as it was. Supported JPEG gain maps (ISO 21496-1, Ultra HDR and Apple) reconstruct linear HDR radiance for the direct view, glare and bloom. Where Display P3 canvas support is available, P3 photos keep their wider gamut in the floating-point rendering pipeline. Image decoding, including HEIC, depends on the browser.
-
-**Panoramas.** Open **Source → 360° park** and drag to look around. Auto projection recognizes full and cropped GPano images and infers cylindrical projection for wide photos. Change **Scene → Projection** to override it. The panorama spans the dog's anatomical field, about 200° for Pug and 270° for Greyhound. **View → Field zones** marks the binocular overlap. Double-click or use **Center view** to reset the heading.
-
-**Depth and focus.** Open the **Depth** button in the top-right bar to toggle **Per-pixel depth defocus**, adjust **Focus distance**, inspect the **Depth map** overlay, or calibrate near and far distances. Shift-click or tap an object to focus at its distance. The samples have offline procedural depth, including the flat 3 m vision chart. Local iPhone Portrait JPEGs (MPF + Apple XMP disparity/depth), iPhone Portrait HEICs (`auxC` auxiliary depth where the browser decodes HEIC), and Android/Pixel `GDepth` JPEGs extract embedded depth automatically and calibrate near/far distances when metric metadata is present. For photos without embedded depth, Dogsight can estimate relative depth on the device with [Depth Anything V2 Small (Apache 2.0)](https://huggingface.co/onnx-community/depth-anything-v2-small), downloading ONNX Runtime Web and the quantized model on demand and caching it in Cache Storage.
-
-**Time and light.** The sustained channel integrates the image over time. A separate 25 ms channel accents moving edges in video and cancels the motion accent for uniform flashes. **Scene → Dark adaptation** lets you watch retinal sensitivity recover at 60× speed or in real time. **Snap adapted** jumps to the steady state.
+- **True dog colour:** Dogs have two colour receptors instead of three, so reds and greens blend into shades of yellow and brown while blues still stand out.
+- **Sharpness by breed and nose shape:** A healthy dog sees roughly 4–5× softer detail than a human. Long-nosed breeds (like Greyhounds) have a wide horizontal band of sharpest focus for scanning the horizon, while short-nosed breeds (like Pugs) have a rounder central sweet spot.
+- **Night vision & dark adaptation:** In dim light, dogs see brighter than humans thanks to rod-heavy retinas and a reflective tapetum, at the cost of softer detail, grain, and slower colour-to-night adaptation—which you can watch in real time or at 60× speed.
+- **25 eye conditions & ageing:** Explore how dry eye, corneal haze, cataracts, glaucoma, retinal disease, and normal age-related lens fog change what a dog sees, with independent settings for the left and right eye.
+- **Focus & real photo depth:** Dogs can't focus sharply on very close objects (closer than ~40 cm). Open the top-right **Depth** menu and Shift-click or tap anything in a scene to focus there. iPhone and Android Portrait photos use their embedded depth map automatically; any other photo can estimate depth privately on your device.
+- **360° wide field of view:** Dogs see much wider around the sides than humans (about 200° for a Pug up to 270° for a Greyhound). Try **Source → 360° park** or open a panorama photo and drag to look around.
+- **Photos, videos & live camera:** Point your phone's camera around your home or open your own photos (automatically reading camera lens, lighting, HDR highlights, and wide P3 colour where available).
+- **Split comparison & Stats for nerds:** Drag the divider to compare human vs. dog vision side by side, toggle acuity/field/depth overlays, or enable **View → Stats for nerds** to inspect live optical and decode details.
 
 Dogsight opens on **Adult Labrador** as a healthy baseline. The **Senior, 15: both eyes** preset models a 15-year-old dog with dry eye, a cloudy left cornea and an ageing lens; the browser probes check both presets' simulated blur and glare against renderer regression targets.
 

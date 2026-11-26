@@ -708,6 +708,7 @@ export class DogsightGL {
 	}
 
 	display(state: AppState, rect: Vec4, background: Vec3) {
+		if (!this.available || !this.rendered) return;
 		const { gl, canvas } = this;
 		const p = this.programs.display;
 		gl.useProgram(p);

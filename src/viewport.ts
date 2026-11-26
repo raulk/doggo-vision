@@ -6,6 +6,7 @@ interface ViewportActions {
 	panoramaField: () => Vec2 | undefined;
 	canFocus: () => boolean;
 	focus: (uv: Vec2) => void;
+	onResize?: () => void;
 }
 
 type Gesture =
@@ -62,9 +63,13 @@ export class DogsightViewport {
 	private resize() {
 		const css = this.host.getBoundingClientRect();
 		const dpr = Math.min(window.devicePixelRatio || 1, 2);
-		this.canvas.width = Math.max(1, Math.round(css.width * dpr));
-		this.canvas.height = Math.max(1, Math.round(css.height * dpr));
+		const width = Math.max(1, Math.round(css.width * dpr));
+		const height = Math.max(1, Math.round(css.height * dpr));
+		if (this.canvas.width === width && this.canvas.height === height) return;
+		this.canvas.width = width;
+		this.canvas.height = height;
 		this.fitRect();
+		this.actions.onResize?.();
 		this.changed();
 	}
 
