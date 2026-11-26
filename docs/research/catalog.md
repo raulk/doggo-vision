@@ -1,5 +1,7 @@
 # Dog Vision Catalog: Science, Variation and Shader Parameters
 
+> **2026-11-26 primary-source audit.** The primary-source scientific audit corrected the findings and citations noted below. This catalog preserves the research-phase shader proposals. See the [decisions log](../decisions.md) for the renderer’s current choices.
+
 Research phase for the Doggo project. Compiled 2026-11-25.
 
 This catalog collects what is known, what can reasonably be inferred, and what is speculation about how dogs see, across breeds, ages and eye conditions. For each property it gives numbers where they exist, sources, a confidence level, and a way to simulate it as an image-shader effect. It also records which conditions show up in a macro photo of the eye, for the planned photo → shader feature.
@@ -39,11 +41,11 @@ Citation tags inside the parts: "verified" / `[V]` means the source was read in 
 | 4 | Worse brightness discrimination | Weber fraction 0.22–0.27 vs human 0.11 | Probable | Contrast quantisation / CSF threshold in a Laplacian pyramid |
 | 5 | Rod-dominated retina + tapetum | ~3% cones; 23:1 rod:cone centrally; tapetum in upper fundus (lower field) | Established | Scotopic branch: rod luminance, gain, noise, tapetal veil in lower field |
 | 6 | Night advantage is detection, not detail | 1.8–3.5 cpd at 0.0087 cd/m² vs human 5.9–9.9 | Probable | In the dark: brighter but much blurrier and noisier than human |
-| 7 | Skull shape changes retinal layout | Long nose → horizontal visual streak; short nose → round area centralis (r = −0.795) | Established | Per-pixel blur map controlled by one "streak strength" s ∈ [0,1] |
+| 7 | Skull shape changes retinal layout | Long nose → horizontal visual streak; short nose → round area centralis (area-centralis:streak ratio vs skull length r = −0.795, vs cephalic index r = +0.687) | Established | Per-pixel blur map controlled by one "streak strength" s ∈ [0,1] |
 | 8 | Wide field, small overlap | ~240° total, 30–60° binocular | Probable | Wide-FOV projection, binocular zone, nose silhouette mask |
 | 9 | Weak focusing | Accommodation 2–3 D, near point ~33–50 cm; breed myopia (Rottweiler 64%, GSD 53% clinic sample) | Probable | Depth-dependent defocus + breed refractive offset |
-| 10 | Faster flicker fusion | Cones ~70–80+ Hz; rods ~20 Hz | Established | Temporal low-pass only matters for video; 60 Hz screens may flicker for dogs |
-| 11 | Ageing hits dim-light vision first | Owner-reported decline from ~2.5 yrs (dim) and ~4.3 yrs (bright); ERG −2.8%/yr photopic, −3.5%/yr scotopic (extrapolated) | Probable | Age gain penalties, stronger on the scotopic branch |
+| 10 | Faster flicker fusion | Bright-light canine CFF ~70–80+ Hz. The cited 20 Hz scotopic result was in cats | Established | Temporal low-pass only matters for video; 60 Hz screens may flicker for dogs |
+| 11 | Ageing hits dim-light vision first | Owner-reported decline from ~2.5 yrs (near darkness) and ~4.3 yrs (bright or dim light); ERG amplitude declines with age (−2.8%/yr photopic and −3.5%/yr scotopic are extrapolations from regression intercepts) | Probable | Age gain penalties, stronger on the scotopic branch |
 | 12 | Lens changes are near universal | Nuclear sclerosis after ~6 yrs (little vision effect); 50% have some cataract by 9.4 ± 3.3 yrs; all dogs >13.5 yrs have lens opacity | Established | Veiling glare, contrast loss, blur; scaled by age / lifespan |
 
 ---
@@ -188,7 +190,7 @@ Compiled 2026-11-25 by the `vision-baseline` research agent. This covers only no
 | L/M cone λmax | ~555 nm | M 530, L 558–560 nm | Established | same |
 | Rod λmax | ~506–510 nm (508 nm by ERG) | ~496–498 nm | Established | Jacobs 1993; Kemp & Jacobson 1992; Parkes 1982 |
 | Spectral neutral point | ~480 nm (band 475–485 nm) | Deuteranope ~505 nm | Established | Neitz 1989 via Miller & Murphy 1995 |
-| Lens UV transmission | λ50 = 335 nm; 61% of UVA (315–400 nm) transmitted | Adult human lens blocks UV below ~400 nm | Established (optics); Probable (perceptual) | Douglas & Jeffery 2014 |
+| UV transmission | Isolated Labrador lenses: λ50 = 335 nm and 61.3% UVA. Whole canine globes: 26.1% at 400 nm, 12.0% at 360 nm and ~12.3% UVA | Adult human lens blocks UV below ~400 nm | Established for the preparations measured | Douglas & Jeffery 2014, Himebaugh et al. 2023 |
 | Cone fraction | ~3% of photoreceptors overall; rod:cone ≈ 23:1 in area centralis, ≈ 41:1 in periphery | ~5% | Established | Peichl 1992 (secondary); Mowat et al. 2008 |
 | S-cone share of cones | ~10–12% centrally, ~15–18% peripherally | ~5–10% | Established | Mowat 2008 |
 | Peak cone density | 20–30k/mm² in area centralis; 64–212k/mm² in a tiny fovea-like "bouquet" | ~150–200k/mm² (fovea) | Established | Mowat 2008; Beltran et al. 2014 |
@@ -197,11 +199,11 @@ Compiled 2026-11-25 by the `vision-baseline` research agent. This covers only no
 | Scotopic acuity (0.0087 cd/m²) | 1.8–3.5 cpd | 5.9–9.9 cpd | Probable (one study) | Lind et al. 2017 |
 | Brightness discrimination (Weber fraction) | 0.22–0.27 | 0.11 | Probable | Pretterer et al. 2004 |
 | Accommodation | ≤ 2–3 D (near point ~33–50 cm) | Up to 14 D in children | Probable | Miller & Murphy 1995 |
-| Refraction | Mean ≈ emmetropic (−0.05 ± 1.36 D); breed myopia (Rottweiler 64%, German shepherd 53% clinic population) | — | Established | Murphy, Zadnik & Mannis 1992; Kubai et al. 2008 (secondary) |
+| Refraction | Mean ≈ emmetropic (−0.05 ± 1.36 D); breed myopia (Rottweiler 64%, German shepherd 53% clinic population) | — | Established | Murphy, Zadnik & Mannis 1992; Kubai et al. 2008 |
 | Total visual field | ~240° (behavioural); ~250° (morphological) | ~180–200° | Probable | Sherman & Wilson 1975; Walls, via Miller & Murphy |
 | Binocular overlap | 30–60° (behavioural); 35–40° (RGC topography) | ~120–140° | Probable | Sherman & Wilson 1975; Peichl 1992 |
 | Critical flicker fusion (cones) | ~70–80+ Hz (behavioural, beagles) | ~50–60 Hz (up to ~70 Hz) | Established | Coile, Pollitz & Smith 1989 |
-| Rod flicker limit (ERG) | ~20 Hz | ~20 Hz | Probable | Aguirre & Rubin 1975; Aguirre 1978 |
+| Scotopic flicker limit | Canine ceiling unresolved. Coile et al. discuss a 20 Hz result from a cat experiment | ~20 Hz | Unresolved for dogs | Coile et al. 1989 |
 | Motion vs stationary detection | Moving object recognised at 810–900 m; stationary only at ≤ 585 m (14 police dogs, 1936) | — | Probable (old study) | Walls 1942/1963, via Miller & Murphy 1995 |
 | Pupil diameter (ambient ~220 lux) | Max 6.05–11.3 mm; min after flash 3.8–9.4 mm; constriction 10–38%; latency 0.11–0.30 s | ~2–8 mm | Established | Mills et al. 2022 |
 | Tapetum | Cellulosum (zinc–cysteine rodlets, 9–20 cell layers); dorsal fundus, ~1/3 of fundus; 70% full-sized, 1.9% absent | None | Established | Ollivier 2004; Granar 2011; Miller & Murphy 1995 |
@@ -256,7 +258,8 @@ Compiled 2026-11-25 by the `vision-baseline` research agent. This covers only no
 1. **S-cone peak.** The dog S cone peaks at ~429–435 nm, against the human S cone at ~420 nm in the pigment, or ~440 nm in the corneal fundamental once lens filtering is included. In effective (corneal) terms the two are similar. The dog L cone at ~555 nm sits between the human M (~530 nm) and L (~558 nm) cones.
 2. **Neutral point.** The dog's is ~480 nm and the human deuteranope's ~505 nm. Using a deuteranope matrix unchanged would place grey-confusion too far toward green.
 3. **Lens and pre-retinal filtering.**
-   - The dog lens has **λ50 = 335 nm** and transmits **61.3% of UVA** (Labrador, n = 2 lenses, 5.0 mm path; Douglas & Jeffery 2014, Proc R Soc B 281:20132995, doi:10.1098/rspb.2013.2995; verified).
+   - Isolated Labrador lenses had **λ50 = 335 nm** and transmitted **61.3% of UVA** (Labrador, n = 2 lenses, 5.0 mm path; Douglas & Jeffery 2014, Proc R Soc B 281:20132995, doi:10.1098/rspb.2013.2995; verified).
+   - Whole-globe measurements including the retina gave **26.1% at 400 nm**, **12.0% at 360 nm** and **~12.3% UVA**. Exit transmission through the globe and transmission through an isolated lens quantify different optical paths. [Himebaugh et al. 2023, PMID 37356536](https://pubmed.ncbi.nlm.nih.gov/37356536/)
    - The human adult lens absorbs essentially everything below ~400 nm.
    - Dogs lack the human yellow lens pigment (Miller & Murphy 1995) and have no macular pigment.
    - **Consequence:** for real-world spectra, dogs probably receive some near-UV (330–400 nm) signal through the β-band of the S pigment. No separate UV cone exists.
@@ -446,7 +449,7 @@ It keeps reds brighter than T_dog does and puts its neutral point near 500 nm. F
   - Resting refraction is near emmetropic: in 240 dogs, the mean was within 0.25 D of emmetropia (Murphy, Zadnik & Mannis 1992, *IOVS* 33:2459; secondary via Miller & Murphy).
   - Myopia of ≤ −0.5 D affected **64% of Rottweilers** and **53% of German shepherds** in a clinic population, but only 15% of guide-dog German shepherds. Miniature schnauzers are also predisposed.
   - Astigmatism of 0.5–3 D appeared in 10 of 240 dogs.
-- **Larger survey.** Kubai et al. 2008 (*Vet Ophthalmol* 11:376) studied 1,440 dogs of 90 breeds; this is secondary via Balicka et al. 2023.
+- **Larger survey.** Kubai et al. (2008, *AJVR* 69:946–951) studied 1,440 dogs of 90 breeds. [PMID 18593249](https://pubmed.ncbi.nlm.nih.gov/18593249/)
   - Mean refraction was −0.05 ± 1.36 D.
   - Myopia was most common in Rottweilers, Collies, Miniature Schnauzers and Toy Poodles.
   - Hyperopia was most common in Australian Shepherds, Bouviers and Alaskan Malamutes.
@@ -471,7 +474,7 @@ It keeps reds brighter than T_dog does and puts its neutral point near 500 nm. F
   - An earlier study (Stone 1921) reported 0.10–0.12 in two fox terriers.
   - Confidence: **Probable**.
 - **Contrast sensitivity function.** **No published full canine behavioural CSF was found.**
-  - de Rivera et al. 2005 (*Prog Neuro-Psychopharmacol Biol Psychiatry*, doi:10.1016/j.pnpbp.2004.12.004) used contrast thresholds in beagles down to 1% contrast, mainly to test ageing; no CSF values were extracted.
+  - de Rivera et al. 2005 (*Prog Neuro-Psychopharmacol Biol Psychiatry*, doi:10.1016/j.pnpbp.2004.12.004) tested contrast sensitivity in beagles. The age-related performance trend did not reach statistical significance. [PMID 15795046](https://pubmed.ncbi.nlm.nih.gov/15795046/)
   - The commonly stated "CSF peak at ~3 cpd" and "2–3× lower peak contrast sensitivity than humans" are **unverified for dogs**. They are extrapolated from cats, whose CSF peaks at ~0.5 cpd (Blake et al. 1974; not verified here), and from the Weber data.
   - Labelled **Speculative / inferred.**
 
@@ -499,7 +502,7 @@ It keeps reds brighter than T_dog does and puts its neutral point near 500 nm. F
   - Alpha cells make up 3–14% of RGCs in dogs.
   - A region of the temporal periphery lacks alpha (Y-like) cells. That region maps to the peripheral binocular field, which suggests possible motion or depth deficits there; this functional link is **Speculative**.
 - **McGreevy, Grassi & Harman 2004** (*Brain Behav Evol* 63:13–22, doi:10.1159/000073756; verified abstract; n = 22 dogs; the online date is 2003):
-  - The ratio of peak RGC density in the area centralis to that in the streak correlates with skull length (r = −0.795) and with cephalic index (r = 0.687).
+  - The ratio of peak RGC density in the area centralis to that in the streak correlates with skull length (r = −0.795) and with cephalic index (r = +0.687).
   - The pattern ranges from an even horizontal streak (wolf-like, long-nosed dogs) to a strong area centralis with almost no streak (pug).
   - Eyelid aperture orientation correlates with cephalic index (r = 0.648).
   - A secondary source (Milton 2016 thesis) gives example densities of ~2,640 /mm² in the area centralis and ~880 /mm² in the streak.
@@ -541,10 +544,9 @@ It keeps reds brighter than T_dog does and puts its neutral point near 500 nm. F
 #### 6.1 Flicker fusion
 
 - **Coile, Pollitz & Smith 1989** (*Physiol Behav* 45:1087–1092, doi:10.1016/0031-9384(89)90092-9; verified abstract) tested 4 beagles with conditioned suppression.
-  - Behavioural CFF was **~70 to >80 Hz** at higher luminance. The numbers come from Miller & Murphy, since the abstract does not give them.
+  - In the original figures, behavioural CFF rises from about 44 Hz at 5.8 cd/m² to 85–86 Hz at 1,209 cd/m². [Coile et al., Figs. 5–6](https://data.docsbay.net/img/d5e439f456cbd928b6b4b649a60ef0fb-5.jpg)
   - There was a psychophysical **rod–cone break** at a luminance "similar to the cat's but much higher than man's".
-  - Dog rods may follow flicker faster than human rods.
-- **ERG data:** rod flicker fusion is ~20 Hz, and the cone ERG limit is ~70 Hz (Aguirre & Rubin 1975; Aguirre 1978).
+  - The paper discusses a possible rod contribution near 40 Hz with imperfect rod isolation. The explicit **20 Hz** scotopic result in the discussion comes from an experiment in cats.
 - **Human comparison:** typically ~50–60 Hz, and Healy et al. 2013 (*Anim Behav* 86:685) tabulate 80 Hz for dogs against 60 Hz for humans.
 - **Confidence:** Established that dog cone CFF is greater than human. The exact value is Probable.
 - **Implications** (Byosiere et al. 2018):
@@ -556,11 +558,11 @@ It keeps reds brighter than T_dog does and puts its neutral point near 500 nm. F
 - In a 1936 study of 14 police dogs, moving objects were recognised at 810–900 m and the same objects when stationary at ≤ 585 m (Walls, via Miller & Murphy 1995).
   - Walls usually attributes the original to Most & Brückner 1936; that attribution is **unverified**.
   - Confidence: **Probable**, given the old study, but it is consistent with the rod-rich, streak-bearing retina.
-- **Point-light displays:** dogs prefer local dot motion over global biological configuration (Eatherington et al. 2019, *Animals* 9:661; title verified via search, content unverified). Kovács et al. 2018 also exist on this topic (*Anim Cogn*, doi:10.1007/s10071-018-1160-8; content unverified).
+- **Point-light displays:** dogs prefer local dot motion over global biological configuration (Eatherington et al. 2019, *Animals* 9:661; title verified via search, content unverified). Ishikawa et al. (2018) also studied this topic. [DOI 10.1007/s10071-018-1160-8](https://doi.org/10.1007/s10071-018-1160-8)
 
 **Simulation (temporal)**
 - **Temporal low-pass:** the dog is no slower than the human. Human-tuned 60 fps playback already exceeds human limits, so for photopic dog mode **do not** add motion blur.
-- **Scotopic mode:** integrate rods over ~100 ms with an exponential moving average (`α ≈ dt / 0.1 s`). This smears motion trails and reflects the ~20 Hz rod limit.
+- **Scotopic mode:** integrate rods over ~100 ms with an exponential moving average (`α ≈ dt / 0.1 s`). This creates illustrative motion smearing. The time constant is an engineering choice.
 - **Motion salience boost (Speculative):** compute temporal difference or optical flow magnitude. Locally increase contrast or brightness of moving regions, especially in the periphery, by +10–30%. Optionally show static peripheral regions with extra blur or contrast loss, so moving targets "pop" as in the Walls data.
 - **Screen flicker demo:** to visualise "what a 60 Hz CRT looks like to a dog", modulate brightness at the display's refresh. This can only be illustrated by an exaggerated slow strobe, because human viewers cannot see the true rate.
 
@@ -598,7 +600,7 @@ It keeps reds brighter than T_dog does and puts its neutral point near 500 nm. F
   - **Shader implication:** none at the pixel level. Avoid "face enhancement" features.
 - **Size discrimination:** dogs discriminated 20% and 10% size differences but not 5% (Byosiere et al., in prep., via Byosiere 2018; unverified).
 - **Visual illusions:** dogs have been tested on the Ebbinghaus illusion and similar figures (Byosiere et al.; not verified here).
-- **Methodological caution:** Pongrácz et al. 2017, "Do you see what I see? The difference between dog and human visual perception may affect the outcome of experiments", *Behav Processes* (PMID 28396145). The title is verified via search; the content is unverified. They argue that stimuli designed for human eyes, such as screen colours and refresh rates, can confound dog experiments.
+- **Methodological caution:** Pongrácz et al. 2017, "Do you see what I see? The difference between dog and human visual perception may affect the outcome of experiments", *Behav Processes* (PMID 28396145). Humans viewed simulated images using earlier estimates of dog vision. The experiment addresses how stimulus appearance can affect interpretation. Pretterer et al. (2004) directly measured canine brightness thresholds. [Pongrácz et al.](https://pubmed.ncbi.nlm.nih.gov/28396145/) · [Pretterer et al.](https://doi.org/10.1167/4.3.10)
 
 ---
 
@@ -645,7 +647,7 @@ Everything in this section is **Speculative** unless stated otherwise.
 
 - **No published dog CSF.** The "peak ~3 cpd, 2–3× lower" figures are inferred.
 - **No direct dog absolute visual threshold.** The "3–5× more sensitive" figure is extrapolated from cats.
-- The exact behavioural CFF values in Coile 1989 (70–80 Hz) come from Miller & Murphy's summary; I did not read the original full text. The luminance levels at which they were measured are unknown.
+- The audit checked the original Coile 1989 figures. The behavioural CFF depends on both stimulus luminance and threshold criterion (see §7).
 - Stereoacuity in dogs is unmeasured.
 - Dark-adaptation time constants for dogs are not quantified beyond "> 1 h for rhodopsin regeneration".
 - Breed variation is large in acuity (Lind 2017 found a 4× range), refraction, field of view, topography and tapetum size. The shader should expose breed presets.
@@ -666,7 +668,7 @@ Each entry gives verification status: [V] I read the primary abstract or full te
 7. Bunford N, Hernández-Pérez R, Farkas EB, et al. (2020). Comparative brain imaging reveals analogous and divergent patterns of species and face sensitivity in humans and dogs. *J Neurosci* 40:8396–8408. doi:10.1523/JNEUROSCI.2800-19.2020 [V]. The author list beyond Bunford is from memory [U].
 8. Burns MS, Bellhorn RW, Impellizzeri CW, et al. (1988). Development of hereditary tapetal degeneration in the beagle dog. *Curr Eye Res* 7:103–114. [S]
 9. Byosiere S-E, Chouinard PA, Howell TJ, Bennett PC (2018). What do dogs (*Canis familiaris*) see? A review of vision in dogs and implications for cognition research. *Psychon Bull Rev* 25:1798–1813. doi:10.3758/s13423-017-1404-7. https://link.springer.com/10.3758/s13423-017-1404-7 [V]. Exact title and pages are from memory; the DOI and content were verified.
-10. Coile DC, Pollitz CH, Smith JC (1989). Behavioral determination of critical flicker fusion in dogs. *Physiol Behav* 45:1087–1092. doi:10.1016/0031-9384(89)90092-9 [V abstract; numbers S]
+10. Coile DC, Pollitz CH, Smith JC (1989). Behavioral determination of critical flicker fusion in dogs. *Physiol Behav* 45:1087–1092. doi:10.1016/0031-9384(89)90092-9 [V abstract and original figures]
 11. de Rivera C, Boutet S, Zicker SC, Milgram NW (2005). A novel method for assessing contrast sensitivity in the beagle dog is sensitive to age and an antioxidant enriched food. *Prog Neuro-Psychopharmacol Biol Psychiatry* 29:379–387. doi:10.1016/j.pnpbp.2004.12.004 [V partial]
 12. Douglas RH, Jeffery G (2014). The spectral transmission of ocular media suggests ultraviolet sensitivity is widespread among mammals. *Proc R Soc B* 281:20132995. doi:10.1098/rspb.2013.2995. https://pmc.ncbi.nlm.nih.gov/articles/PMC4027392/ [V]
 13. Eatherington CJ, Marinelli L, Lõoke M, Battaglini L, Mongillo P (2019). Local dot motion, not global configuration, determines dogs' preference for point-light displays. *Animals* 9:661. https://pmc.ncbi.nlm.nih.gov/articles/PMC6770411 [U content; title V]
@@ -678,7 +680,7 @@ Each entry gives verification status: [V] I read the primary abstract or full te
 19. Kang I, Reem RE, Kaczmarowski AL, Malpeli JG (2009). Contrast sensitivity of cats and humans in scotopic and mesopic conditions. *J Neurophysiol* 102:831–840. doi:10.1152/jn.90641.2008 [V]
 20. Kasparson AA, Badridze J, Maximov VV (2013). Colour cues proved to be more informative for dogs than brightness. *Proc R Soc B* 280:20131356. doi:10.1098/rspb.2013.1356. https://pmc.ncbi.nlm.nih.gov/articles/PMC3730601 [V]
 21. Kemp CM, Jacobson SG (1992). Rhodopsin levels in the central retinas of normal miniature poodles and those with progressive rod-cone degeneration. *Exp Eye Res* 54:947–956. [S]
-22. Kubai MA, Bentley E, Miller PE, Mutti DO, Murphy CJ (2008). Refractive states of eyes and association between ametropia and breed in dogs. *Am J Vet Res* 69:946–951. [S; journal and pages unverified, possibly *Vet Ophthalmol*]
+22. Kubai MA, Bentley E, Miller PE, Mutti DO, Murphy CJ (2008). Refractive states of eyes and association between ametropia and breed in dogs. *Am J Vet Res* 69:946–951. [V abstract, PMID 18593249]
 23. Lind O, Milton I, Andersson E, Jensen P, Roth LSV (2017). High visual acuity revealed in dogs. *PLoS ONE* 12:e0188557. doi:10.1371/journal.pone.0188557. https://pmc.ncbi.nlm.nih.gov/articles/PMC5716585 [V]
 24. Machado GM, Oliveira MM, Fernandes LAF (2009). A physiologically-based model for simulation of color vision deficiency. *IEEE TVCG* 15:1291–1298. [U; matrix taken from the colour-science implementation]
 25. McGreevy P, Grassi TD, Harman AM (2004; online 2003). A strong correlation exists between the distribution of retinal ganglion cells and nose length in the dog. *Brain Behav Evol* 63:13–22. doi:10.1159/000073756 [V]
@@ -693,13 +695,13 @@ Each entry gives verification status: [V] I read the primary abstract or full te
 34. Ofri R, Dawson WW, Gelatt KN (1993). Visual resolution in normal and glaucomatous dogs determined by pattern electroretinogram. *Prog Vet Comp Ophthalmol* 3:111–116. [S]
 35. Ollivier FJ, Samuelson DA, Brooks DE, et al. (2004). Comparative morphology of the tapetum lucidum (among selected species). *Vet Ophthalmol* 7:11–22. [S]
 36. Peichl L (1992). Topography of ganglion cells in the dog and wolf retina. *J Comp Neurol* 324:603–620. doi:10.1002/cne.903240412 [V]
-37. Pongrácz P, Ujvári V, Faragó T, Miklósi Á, Péter A (2017). Do you see what I see? The difference between dog and human visual perception may affect the outcome of experiments. *Behav Processes* 140:53–60. PMID 28396145. [Title V; authors, pages and content U]
+37. Pongrácz P, Ujvári V, Faragó T, Miklósi Á, Péter A (2017). Do you see what I see? The difference between dog and human visual perception may affect the outcome of experiments. *Behav Processes* 140:53–60. PMID 28396145. [V for study design: humans viewing simulated images]
 38. Pretterer G, Bubna-Littitz H, Windischbauer G, Gabler C, Griebel U (2004). Brightness discrimination in the dog. *J Vis* 4(3):10. https://jov.arvojournals.org/article.aspx?articleid=2121581 [V]
 39. Sherman SM, Wilson JR (1975). Behavioral and morphological evidence for binocular competition in the postnatal development of the dog's visual system. *J Comp Neurol* 161:183–195. [S]
 40. Tanaka T, Ikeuchi E, Mitani S, Eguchi Y, Uetake K (2000). Studies on the visual acuity of dogs using shape discrimination learning. *Nihon Chikusan Gakkaiho* 71(6). [S]
 41. Walk RD, Gibson EJ (1961). A comparative and analytic study of visual depth perception. *Psychol Monogr* 75:1–44. [S]
 42. Walls GL (1942/1963). *The Vertebrate Eye and Its Adaptive Radiation*. Cranbrook / Hafner. [S]. The original 1936 police-dog study (often given as Most & Brückner 1936) is [U].
-43. Kovács K, Virányi Z, et al. (2018). Dog motion perception, *Anim Cogn*, doi:10.1007/s10071-018-1160-8. [U; title and content not read]
+43. Ishikawa et al. (2018). *Anim Cogn*. [DOI 10.1007/s10071-018-1160-8](https://doi.org/10.1007/s10071-018-1160-8)
 
 
 ---
@@ -737,8 +739,7 @@ The age and breed effects below should be layered on top of the species-level do
 
 **Findings**
 - McGreevy, Grassi & Harman studied 22 dogs.
-  - The ratio of peak RGC density in the area centralis to peak density in the visual streak correlates negatively with skull length (r = −0.795).
-  - The same ratio correlates positively with cephalic index (r = 0.687).
+  - The ratio of peak RGC density in the area centralis to peak density in the visual streak correlates with skull length (r = −0.795) and cephalic index (r = +0.687).
   - Eyelid aperture orientation also correlates with cephalic index (r = 0.648).
   - Long-nosed dogs have an obvious, even horizontal visual streak, as wolves do.
   - Short-nosed dogs, a pug for example, have a strong area centralis and almost no streak.
@@ -926,14 +927,14 @@ Ages of onset and progression come from Mellersh (2014), Gelatt & MacKay (2004, 
 | ADPRA (RHO T4R) | Mastiff, bullmastiff | ERG abnormal by 13 months | Light-sensitive degeneration | Same, plus a glare penalty | Established |
 | Photoreceptor dysplasia | Miniature schnauzer | Very early | Rods and cones | Same | Established |
 | Collie eye anomaly (NHEJ1) | Rough and smooth collie, Shetland sheepdog, Australian shepherd; lower in border collie | Congenital; mild choroidal hypoplasia may be masked by pigment by 3–7 months | Usually subclinical. Coloboma gives a focal scotoma (blind spot); detachment causes blindness. Up to 80–85% phenotypic incidence in US collies (Gilger 2006, via Wikipedia; unverified) | Most dogs: none. Coloboma: a soft scotoma, 5–15°, below the centre. Severe: blind | Probable |
-| Primary glaucoma | American cocker 5.52%, basset 5.44%, chow chow 4.70%, Shar-Pei 4.40%, Boston terrier 2.88%, wire fox terrier 2.28%, Norwegian elkhound 1.98%, Siberian husky 1.88%, cairn terrier 1.82%, miniature poodle 1.68%. Shiba Inu is also predisposed, but I have not verified a number | About 6–7 years (Ollivier 2019) | Acute: corneal edema (halos, haze) and pain. Chronic: field loss from the periphery inward, then blindness | Edema: haze 0.3–0.6 plus rainbow halos around lights. Chronic: field mask shrinking toward the centre | Established (prevalence) |
-| Cataract, breed-related | Prevalence (Gelatt & MacKay 2005): smooth fox terrier 11.70%, Havanese 11.57%, bichon frise 11.45%, Boston terrier 11.11%, miniature poodle 10.79%, silky terrier 10.29%, toy poodle 10.21%; mixed breeds 1.61%. Also miniature schnauzer (congenital to 4 months), American cocker (6 months to 8 years), Labrador and golden retriever (posterior polar, 9–18 months, usually non-progressive) | By breed; see VIN table | Scatter, contrast loss, blur, then blindness | See B3 cataract model | Established |
+| Primary glaucoma | Historical North American hospital breed prevalence: American cocker 5.52%, basset 5.44%, chow chow 4.70%, Shar-Pei 4.40%, Boston terrier 2.88%, wire fox terrier 2.28%, Norwegian elkhound 1.98%, Siberian husky 1.88%, cairn terrier 1.82%, miniature poodle 1.68%. Shiba Inu is also predisposed, but I have not verified a number | About 6–7 years (Ollivier 2019) | Acute: corneal edema (halos, haze) and pain. Chronic: field loss from the periphery inward, then blindness | Edema: haze 0.3–0.6 plus rainbow halos around lights. Chronic: field mask shrinking toward the centre | Established (prevalence) |
+| Cataract, breed-related | Historical hospital breed prevalence (Gelatt & MacKay 2005): smooth fox terrier 11.70%, Havanese 11.57%, bichon frise 11.45%, Boston terrier 11.11%, miniature poodle 10.79%, silky terrier 10.29%, toy poodle 10.21%; mixed breeds 1.61%. Also miniature schnauzer (congenital to 4 months), American cocker (6 months to 8 years), Labrador and golden retriever (posterior polar, 9–18 months, usually non-progressive) | By breed; see VIN table | Scatter, contrast loss, blur, then blindness | See B3 cataract model | Established |
 | Diabetic cataract | Any breed | More than 85% of diabetic dogs develop cataract | Fast, bilateral | Fast progression of the B3 model | Established (MSD) |
-| KCS (dry eye) | American cocker OR 52.3, bulldog 38.0, CKCS 19.8; brachycephalic 3.63× mesocephalic; also West Highland white terrier, pug, Shih Tzu (Probable) | Adult | Tear-film haze, mucus, corneal pigment over time | Haze plus streaks (A3) | Established / Probable |
+| KCS (dry eye) | UK primary-care study (overall period prevalence 0.40%). Adjusted odds ratios vs crossbreds: American cocker 52.33, English bulldog 37.95, CKCS 19.79. Brachycephalic vs mesocephalic odds ratio 3.63. Also West Highland white terrier, pug, Shih Tzu (Probable) | Adult | Tear-film haze, mucus, corneal pigment over time | Haze plus streaks (A3) | Established / Probable |
 | Pigmentary keratitis | Pug (91.9% of dogs); also Shih Tzu, Pekingese, Lhasa apso (Probable) | Prevalence rises with age; median age in the study 2.5 years | Nasal-to-central brown opacity | A3 overlay | Established |
 | Corneal ulcer | Pug OR 19.1, boxer 12.1, Shih Tzu 10.0 | Peak about 6–9 years | Focal haze, pain, squint | Local glare and blur | Established |
 | Entropion / ectropion | Shar-Pei, Chow, bulldog, St Bernard, bloodhound, Bullmastiff, Labrador (entropion); St Bernard, bloodhound, basset, cocker, Clumber (ectropion) | Puppy to young adult | Squinting, irritation, keratitis | Narrowed vertical aperture (entropion); exposure haze (ectropion) | Probable (Gough & Thomas, unverified page) |
-| SARDS | Dachshund 21%, schnauzer 11%, pug 7%, Brittany 3% of 151 cases; spayed females 59%; median 8.9 years (range 3–20); median weight 12.4 kg | Acute, over days | Total blindness with a flat ERG | Rapid ramp to black (or light-perception only) over 1–4 simulated weeks | Established (Auten et al. 2018) |
+| SARDS | Share of 151 referred SARDS cases: dachshund 21%, schnauzer 11%, pug 7%, Brittany 3%; spayed females 59%; median 8.9 years (range 3–20); median weight 12.4 kg | Acute, over days | Total blindness with a flat ERG | Rapid ramp to black (or light-perception only) over 1–4 simulated weeks | Established (Auten et al. 2018) |
 | Corneal endothelial dystrophy | Boston terrier (5–9 years), Chihuahua and dachshund (8–13 years) | Middle-aged to senior | Bluish diffuse edema, then bullous keratopathy | Global haze, from 0.2 up to more than 0.7, plus a blue tint and halos | Probable |
 | Senile iris atrophy | Poodles, cockers, schnauzers, Chihuahua (Probable) | Middle-aged to old | Poor pupil constriction, glare, photophobia | B3 pupil model | Probable |
 
@@ -1018,7 +1019,7 @@ Adulthood runs from about 6 months to about 0.45 L (about 5–6 years for medium
   - Contrast: multiply by (1 − 0.10·NS).
   - Small extra blur: σ += 0.1–0.2° × NS.
   - Myopic shift: with probability 0.07 → 0.30 by grade (Francis 2024), apply about −1.5 to −2 D in the defocus model.
-  - **Yellowing:** canine NS appears grey-blue to the examiner. I found no measured spectral transmittance for canine lenses by age; the Douglas & Jeffery 2014 data on dog lenses were inaccessible. A mild short-wavelength cut is plausible (Speculative). Multiply the S-cone (blue) channel by (1 − 0.15·NS) and the L/M ("yellow") channel by (1 − 0.03·NS). This matters for a dichromat: it shrinks the blue–yellow axis, desaturating the image toward grey.
+  - **Yellowing:** canine NS appears grey-blue to the examiner. I found no measured spectral transmittance for canine lenses by age; Douglas & Jeffery 2014 measured isolated lenses and Himebaugh et al. 2023 measured whole-globe UV transmission (Part I §1.4). A mild short-wavelength cut is plausible (Speculative). Multiply the S-cone (blue) channel by (1 − 0.15·NS) and the L/M ("yellow") channel by (1 − 0.03·NS). This matters for a dichromat: it shrinks the blue–yellow axis, desaturating the image toward grey.
 
 **Senile cataract**
 - Findings (Williams, Heath & Wallis 2004, 2,000 dogs):
@@ -1070,7 +1071,7 @@ Adulthood runs from about 6 months to about 0.45 L (about 5–6 years for medium
   - Salzman et al. (2023, Doc Ophthalmol 147:15–28, 77 dogs, median age 9.8 years): with age, both rod and cone ERG amplitudes fall and their peak times lengthen. Examples: dark-adapted a-wave at 3 cd·s/m², p < 0.0001; light-adapted 30 Hz flicker amplitude, p = 0.0004. No per-year effect size is in the abstract. **Established.**
   - Rogers 2023:
     - b-wave amplitude correlated with age (r = −0.29 to −0.58).
-    - Regression x-intercepts, the ages at which amplitude extrapolates to zero, were 436 months (36 years) for light-adapted responses and 342 months (28.5 years) for dark-adapted responses. That implies a linear loss of about 2.8% per year (light-adapted) and about 3.5% per year (dark-adapted) of the young-adult amplitude (my calculation from the reported intercepts; Probable).
+    - Regression x-intercepts, the ages at which amplitude extrapolates to zero, were 436 months (36 years) for light-adapted responses and 342 months (28.5 years) for dark-adapted responses. Normalizing the fitted amplitudes to their age-zero intercepts implies declines of about −2.8%/yr (light-adapted) and −3.5%/yr (dark-adapted). These are catalog extrapolations from the ERG regressions. Rogers et al. reported dogVLQ owner-response trends separately.
     - Owner-rated decline begins about 2.5 years (near darkness) to 4.3 years (bright or dim light).
 - Shader:
   - Retinal gain R_photopic(age) = 1 − 0.028·(age_years − 1).
@@ -1226,7 +1227,7 @@ CEA coloboma scotoma, MM microphthalmia presets
 1. McGreevy P, Grassi TD, Harman AM. A strong correlation exists between the distribution of retinal ganglion cells and nose length in the dog. *Brain Behav Evol.* 2004;63(1):13–22 (online 2003). doi:10.1159/000073756.
 2. Byosiere S-E, Chouinard PA, Howell TJ, Bennett PC. What do dogs (*Canis familiaris*) see? A review of vision in dogs and implications for cognition research. *Psychon Bull Rev.* 2018;25:1798–1813. doi:10.3758/s13423-017-1404-7.
 3. Miller PE. Vision in animals: what do dogs and cats see? (VIN proceedings, summarising Miller PE, Murphy CJ. Vision in dogs. *JAVMA* 1995;207(12):1623–1634). https://www.vin.com/doc/?id=3844144. The JAVMA original was confirmed as a citation; its full text was not read.
-4. Kubai MA, Bentley E, Miller PE, Mutti DO, Murphy CJ. Refractive states of eyes and association between ametropia and breed in dogs. *Am J Vet Res.* 2008;69(7):946–951. Verified through a university summary (vetsurgeon.org) and the reference list in Balicka 2023; the diopter values are unverified.
+4. Kubai MA, Bentley E, Miller PE, Mutti DO, Murphy CJ. Refractive states of eyes and association between ametropia and breed in dogs. *Am J Vet Res.* 2008;69(7):946–951. [Primary abstract, PMID 18593249](https://pubmed.ncbi.nlm.nih.gov/18593249/).
 5. Murphy CJ, Zadnik K, Mannis MJ. Myopia and refractive error in dogs. *Invest Ophthalmol Vis Sci.* 1992;33(8):2459–2463. Verified as a citation. The breed percentages come from a secondary summary (P. McConnell blog) and are treated as Probable.
 6. Balicka A, Zwolska J, Szadkowski M, Trbolova A, Balicki I. Refractive errors in mixed breed dogs of different ages. *Vet Med (Praha).* 2023;68(1):11–16. doi:10.17221/106/2021-VETMED.
 7. Francis JM, Mowat FM, Ludwig A, Hicks JM, Pumphrey SA. Quantifying refractive error in companion dogs with and without nuclear sclerosis: 229 eyes from 118 dogs. *Vet Ophthalmol.* 2024;27(1):70–78. doi:10.1111/vop.13163.
@@ -1267,7 +1268,7 @@ CEA coloboma scotoma, MM microphthalmia presets
 - Williams DL. "Lens and lens changes in older dogs" (title as given in the task; not found). A related review may exist: Williams DL, major ocular changes in older dogs, *Vet Clin North Am Small Anim Pract.*
 - Mowat FM, Petersen-Jones SM, Williamson H, et al. Topographical characterization of cone photoreceptors and the area centralis of the canine retina. *Mol Vis.* 2008;14:2518–2527. Cited via Byosiere 2018.
 - Gácsi M, McGreevy P, Kara E, Miklósi Á. Effects of selection for cooperation and attention in dogs. *Behav Brain Funct.* 2009;5:31. Cited via Byosiere 2018.
-- Douglas RH, Jeffery G. The spectral transmission of ocular media suggests ultraviolet sensitivity is widespread among mammals. *Proc R Soc B.* 2014;281:20132995. The dog lens transmission data could not be accessed.
+- Douglas RH, Jeffery G. The spectral transmission of ocular media suggests ultraviolet sensitivity is widespread among mammals. *Proc R Soc B.* 2014;281:20132995. Isolated Labrador lens transmission was verified (Part I §1.4).
 - Gilger BC. Diagnosis and treatment of ocular fundus disorders of geriatric dogs. *NAVC Proceedings*, 2006. Source of the collie eye anomaly 80–85% figure, via Wikipedia.
 - Bjerk E. Ocular disease of the aging dog. *WSAVA Proceedings*, 2004. Source of the endothelial-dystrophy onset ages, via Wikipedia.
 - Salvin HE, et al. (2010) on cognitive dysfunction prevalence, cited via VIN.
@@ -1446,7 +1447,7 @@ The baseline FOV mapping for field masks assumes the rendered image spans about 
    - **Prevalence:** very high in **Pugs**. UK prevalence was **91.9% of dogs and 87.8% of eyes**, bilateral in 91.2% (Maini et al. 2019 [V]). Earlier prevalence estimates of 70–82.4% are cited, including Labelle 2013 at 82.4% (via Maini 2019 [V]).
    - **Other breeds:** other brachycephalics (Shih Tzu, Lhasa Apso, Pekingese, French Bulldog) [Probable].
    - **Pattern:** starts in the **medial (nasal) cornea** and spreads centripetally in a wedge or triangle (Maini 2019 [V]).
-   - **Grading (Maini 2019):** 12 clock hours, with extra points for reaching or crossing the pupil. Mild 0.5–4.5, moderate 5–9.5, severe 10–14 [V].
+   - **Grading (Maini 2019):** Score the extent over 12 clock hours, then add +1 if pigment reaches the pupil or +2 if it crosses the pupil. These bonuses are mutually exclusive. Maximum score 14. Mild 0.5–4.5, moderate 5–9.5, severe 10–14 [V].
    - **Progression:** slowly over years. Lesions can be stable.
 2. **Effect on vision.** Patchy **opaque brown or black occluders** in the corneal plane. Because the cornea is far from the retina's focal plane, a corneal pigment patch does not appear as a sharp shape in the image. Instead it **attenuates and veils the part of the field whose rays pass through it**. Medial corneal pigment mainly reduces light from the temporal field and lowers overall contrast. When it covers the visual axis it causes "significant visual impairment and, in severe cases, blindness" (Maini 2019 [V]).
 3. **Shader recipe** (s from the Maini score: s = score/14):
@@ -1696,7 +1697,7 @@ The baseline FOV mapping for field masks assumes the rendered image spans about 
    - **External clues:** **bilaterally dilated pupils in normal room light**. **Increased "eyeshine"** (owners notice bright tapetal reflection; Cornell [V]). Ophthalmoscopically this is tapetal hyperreflectivity (Merck [V]), and a flash photo may show a brighter, more uniform tapetal reflex. Later **bilateral cataracts**.
    - All of these are non-specific: flash intensity, pupil size and tapetal colour vary a lot between individuals.
    - **Requires a vet:** **fundoscopy** (vessel attenuation, tapetal hyperreflectivity, optic disc pallor), **ERG** (definitive, early), and **DNA testing** (prcd, rcd1 and others).
-   - Smartphone **fundus** photography (with a 20D/28D condensing lens, or adaptors) is feasible in animals (Haddock et al. 2013, human and animal eyes [unverified detail]; *Vet Ophthalmol* 2016 smartphone fundus camera assessment [unverified]). Penn Vet's **DogAEye** (Dec 2025) classifies early PRA from **fundus photographs** uploaded by vets; no metrics were published on the announcement page [V].
+   - Smartphone **fundus** photography (with a 20D/28D condensing lens, or adaptors) is feasible in animals (Haddock et al. 2013, human and animal eyes [unverified detail]; Balland et al., animal smartphone fundus camera assessment, online 2016 and print 2017). Penn Vet's **DogAEye** (Dec 2025) classifies early PRA from **fundus photographs** uploaded by vets; no metrics were published on the announcement page [V].
 5. **Confidence:** Established (course, onset groups, signs); tunnel numbers Speculative.
 
 #### 4.2 Sudden acquired retinal degeneration syndrome (SARDS)
@@ -2072,7 +2073,7 @@ The detector outputs **visible findings** with probabilities and graded severiti
 30. Penn Vet. "Vision scientists at Penn Vet launch DogAEye, a novel AI-based tool to improve early diagnosis of retinal degeneration in dogs." 15 Dec 2025. https://www.vet.upenn.edu/vision-scientists-at-penn-vet-launch-dogaeye-a-novel-ai-based-tool-to-improve-early-diagnosis-of-retinal-degeneration-in-dogs/ [V]
 31. Gu B, Christopher M, Lim S-H, Baxter SL. "Deep Learning-Based Analysis of Ocular Anterior Segment Diseases from Patient-Self-Captured Smartphone Images." *Informatics* 2025;12(1):2. DOI 10.3390/informatics12010002 [V; human data]
 32. Haddock LJ, Kim DY, Mukai S. "Simple, Inexpensive Technique for High-Quality Smartphone Fundus Photography in Human and Animal Eyes." *J Ophthalmol* 2013:518479. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3793314/ [unverified details; title seen in search]
-33. "Assessment of a smartphone-based camera for fundus imaging in animals." *Vet Ophthalmol* 2016 (DOI 10.1111/vop.12399; PubMed 26775579). [unverified; title only]
+33. Balland et al. "Assessment of a smartphone-based camera for fundus imaging in animals." *Vet Ophthalmol* (online 2016, print 2017). [DOI 10.1111/vop.12350](https://doi.org/10.1111/vop.12350) · [PMID 26775579](https://pubmed.ncbi.nlm.nih.gov/26775579/)
 34. Gelatt KN, Ben-Shlomo G, Gilger BC, Hendrix DVH, Kern TJ, Plummer CE (eds). *Veterinary Ophthalmology*, 6th ed. Wiley-Blackwell, 2021. [unverified; general reference for "Probable" statements (breed lists, IOP cutoffs, CEA genetics, Horner, cherry eye, merle), not consulted directly in this session]
 35. AI Hub (Korea), 반려동물 안구질환 데이터 (Companion animal eye disease data). https://aihub.or.kr [unverified; dataset page not accessed; details via refs 23, 25]
 36. Roboflow Universe community datasets, e.g. https://universe.roboflow.com/petconnect/dog_eye_disease , https://universe.roboflow.com/pet-3/dogs-and-cats-eye-diseases [seen in search; not evaluated]

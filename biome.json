@@ -1,0 +1,19 @@
+{
+	"files": {
+		"includes": [
+			"**/*.{ts,js,css,json,html}",
+			"!**/site",
+			"!**/dist",
+			"!**/node_modules",
+			"!tests/out",
+			"!docs/research/realism-audit",
+			"!package-lock.json"
+		]
+	},
+	"javascript": { "linter": { "enabled": false } },
+	"linter": { "enabled": true },
+	"assist": {
+		"enabled": true,
+		"actions": { "source": { "organizeImports": "on" } }
+	}
+}
